@@ -45,6 +45,7 @@ limitations under the License.
 #include "tensorflow/lite/string_type.h"
 #include "tensorflow/lite/util.h"
 #include "tensorflow/lite/version.h"
+#include "tensorflow/lite/minimal_logging.h"
 
 // aligned_alloc is available (via cstdlib/stdlib.h) with C++17/C11.
 #if __cplusplus >= 201703L || __STDC_VERSION__ >= 201112L
@@ -776,9 +777,11 @@ TfLiteStatus InterpreterBuilder::operator()(
 
   for (int subgraph_index = 0; subgraph_index < subgraphs->size();
        ++subgraph_index) {
+    TFLITE_LOG(tflite::TFLITE_LOG_WARNING, "(JBD) subgraph_index: %d", subgraph_index);
     const tflite::SubGraph* subgraph = (*subgraphs)[subgraph_index];
     tflite::Subgraph* modified_subgraph =
-        (*interpreter)->subgraph(subgraph_index);
+        (*interpreter)->gpu_subgraph(subgraph_index);
+        // (*interpreter)->subgraph(subgraph_index); // (JBD)
     auto operators = subgraph->operators();
     auto tensors = subgraph->tensors();
     if (!tensors) {

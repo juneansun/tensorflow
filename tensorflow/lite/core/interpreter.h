@@ -495,6 +495,9 @@ class Interpreter {
   /// AllocateTensors().
   /// Returns status of success or failure.
   TfLiteStatus Invoke();
+  TfLiteStatus GPU_Invoke();
+  TfLiteStatus Hexagon_Invoke();
+  TfLiteStatus Other_Invoke();
 
   /// Set the number of threads available to the interpreter.
   ///
@@ -568,6 +571,10 @@ class Interpreter {
   /// 5. kTfLiteError: Unexpected/runtime failure. \n
   /// \warning This is an experimental API and subject to change. \n
   TfLiteStatus ModifyGraphWithDelegate(TfLiteDelegate* delegate);
+  TfLiteStatus ModifyGraphWithGPUDelegate(TfLiteDelegate * delegates);
+  TfLiteStatus ModifyGraphWithHexagonDelegate(TfLiteDelegate * delegates);
+  TfLiteStatus ModifyGraphWithTPUDelegate(TfLiteDelegate * delegates) {} ;
+  TfLiteStatus ModifyGraphWithOtherDelegate(TfLiteDelegate * delegates) {} ;
 
   // Owning handle to a TfLiteDelegate instance.
   using TfLiteDelegatePtr =
@@ -748,6 +755,15 @@ class Interpreter {
         static_cast<const Interpreter*>(this)->subgraph(subgraph_index));
   }
 
+  /// \warning This is an experimental API and subject to change.
+  Subgraph* gpu_subgraph(int subgraph_index) {
+    if (subgraph_index < 0 ||
+        static_cast<size_t>(subgraph_index) >= subgraphs_size()) {
+      return nullptr;
+    }
+    return gpu_subgraphs_[subgraph_index].get();
+  }
+
   /// \warning Experimental interface, subject to change.
   Subgraph& primary_subgraph() {
     return *subgraphs_.front();  // Safe as subgraphs_ always has 1 entry.
@@ -805,6 +821,10 @@ class Interpreter {
   // interpreter.cc rather than in interpreter_experimental.cc, so it can be
   // used to implement other non-experimental methods.
   TfLiteStatus ModifyGraphWithDelegateImpl(TfLiteDelegate* delegate);
+  TfLiteStatus ModifyGraphWithGPUDelegateImpl(TfLiteDelegate* delegate);
+  TfLiteStatus ModifyGraphWithHexagonDelegateImpl(TfLiteDelegate* delegate);
+  TfLiteStatus ModifyGraphWithTPUDelegateImpl(TfLiteDelegate* delegate);
+  TfLiteStatus ModifyGraphWithOtherDelegateImpl(TfLiteDelegate* delegate);
 
   // Same as ModifyGraphWithDelegateImpl except that it takes ownership of the
   // delegate.
@@ -902,6 +922,10 @@ class Interpreter {
 
   // Subgraphs
   std::vector<std::unique_ptr<Subgraph>> subgraphs_;
+  std::vector<std::unique_ptr<Subgraph>> gpu_subgraphs_;
+  std::vector<std::unique_ptr<Subgraph>> hexagon_subgraphs_;
+  std::vector<std::unique_ptr<Subgraph>> tpu_subgraphs_;
+  std::vector<std::unique_ptr<Subgraph>> other_subgraphs_;
 
   // A map of resources. Owned by interpreter and shared by multiple subgraphs.
   resource::ResourceMap resources_;

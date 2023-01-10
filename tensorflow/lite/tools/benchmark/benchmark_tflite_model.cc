@@ -709,6 +709,7 @@ TfLiteStatus BenchmarkTfLiteModel::InitInterpreter() {
 }
 
 TfLiteStatus BenchmarkTfLiteModel::Init() {
+  sleep(3);
   TF_LITE_ENSURE_STATUS(LoadModel());
   TF_LITE_ENSURE_STATUS(InitInterpreter());
 
@@ -755,7 +756,18 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
     // later.
     // Moving the delegate to a list of owned delegates to guarantee that.
     owned_delegates_.emplace_back(std::move(created_delegate.delegate));
-    if (interpreter_->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
+    // if (interpreter_->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    TfLiteStatus result;
+#if 1
+    if (delegate_provider->GetName().compare("GPU") == 0)
+        result = interpreter_->ModifyGraphWithGPUDelegate(delegate);
+    else if (delegate_provider->GetName().compare("Hexagon") == 0)
+        result = interpreter_->ModifyGraphWithHexagonDelegate(delegate);
+    else
+#endif
+        result = interpreter_->ModifyGraphWithDelegate(delegate);
+
+    if (result != kTfLiteOk) {
       TFLITE_LOG(ERROR) << "Failed to apply " << delegate_provider->GetName()
                         << " delegate.";
       return kTfLiteError;
@@ -903,7 +915,17 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
           !params_.Get<std::string>("profiling_output_csv_file").empty())));
 }
 
-TfLiteStatus BenchmarkTfLiteModel::RunImpl() { return interpreter_->Invoke(); }
+int cnt = 0;
+TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
+    cnt++;
+    if ((cnt & 1) == 1)
+        return interpreter_->Invoke();
+    else
+        return interpreter_->GPU_Invoke(); // (JBD) test with force running GPU
+
+    if (cnt == 2)
+        cnt = 0;
+}
 
 }  // namespace benchmark
 }  // namespace tflite
