@@ -142,6 +142,8 @@ class InterpreterBuilder {
       Interpreter* interpreter);
   void ParseConversionMetadata(TfLiteTelemetryInterpreterSettings* settings);
 
+  TfLiteStatus delegated_subgraph(tflite::Subgraph *modified_subgraph, const tflite::SubGraph *subgraph, int subgraph_index);
+
   const ::tflite::Model* model_;
   const OpResolver& op_resolver_;
   ErrorReporter* error_reporter_;

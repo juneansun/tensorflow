@@ -197,7 +197,24 @@ void Interpreter::AddSubgraphs(int subgraphs_to_add,
     Subgraph* subgraph = new Subgraph(
         error_reporter_, external_contexts_, &subgraphs_, &resources_,
         &resource_ids_, &initialization_status_map_, subgraphs_.size());
+    Subgraph* subgraph1 = new Subgraph(
+            error_reporter_, external_contexts_, &subgraphs_, &resources_,
+            &resource_ids_, &initialization_status_map_, subgraphs_.size());
+    Subgraph* subgraph2 = new Subgraph(
+            error_reporter_, external_contexts_, &subgraphs_, &resources_,
+            &resource_ids_, &initialization_status_map_, subgraphs_.size());
+    Subgraph* subgraph3 = new Subgraph(
+            error_reporter_, external_contexts_, &subgraphs_, &resources_,
+            &resource_ids_, &initialization_status_map_, subgraphs_.size());
+    Subgraph* subgraph4 = new Subgraph(
+            error_reporter_, external_contexts_, &subgraphs_, &resources_,
+            &resource_ids_, &initialization_status_map_, subgraphs_.size());
+
     subgraphs_.emplace_back(subgraph);
+    gpu_subgraphs_.emplace_back(subgraph1);
+    hexagon_subgraphs_.emplace_back(subgraph2);
+    tpu_subgraphs_.emplace_back(subgraph3);
+    other_subgraphs_.emplace_back(subgraph4);
   }
 }
 
@@ -205,9 +222,29 @@ TfLiteStatus Interpreter::AddNodeWithParameters(
     const std::vector<int>& inputs, const std::vector<int>& outputs,
     const char* init_data, size_t init_data_size, void* builtin_data,
     const TfLiteRegistration* registration, int* node_index) {
-  return primary_subgraph().AddNodeWithParameters(
+  TfLiteStatus result;
+
+  result = primary_subgraph().AddNodeWithParameters(
       inputs, outputs, {}, init_data, init_data_size, builtin_data,
       registration, node_index);
+
+  result = gpu_subgraphs_.front()->AddNodeWithParameters(
+      inputs, outputs, {}, init_data, init_data_size, builtin_data,
+      registration, node_index);
+
+  result = hexagon_subgraphs_.front()->AddNodeWithParameters(
+      inputs, outputs, {}, init_data, init_data_size, builtin_data,
+      registration, node_index);
+
+  result = tpu_subgraphs_.front()->AddNodeWithParameters(
+      inputs, outputs, {}, init_data, init_data_size, builtin_data,
+      registration, node_index);
+
+  result = other_subgraphs_.front()->AddNodeWithParameters(
+      inputs, outputs, {}, init_data, init_data_size, builtin_data,
+      registration, node_index);
+
+  return result;
 }
 
 TfLiteStatus Interpreter::ResizeInputTensor(int tensor_index,
@@ -221,6 +258,87 @@ TfLiteStatus Interpreter::ResizeInputTensorStrict(
 }
 
 TfLiteStatus Interpreter::Invoke() {
+  ScopedRuntimeInstrumentationProfile scoped_runtime_event(root_profiler_.get(),
+                                                           "invoke");
+
+  // "Resets" cancellation flag so cancellation happens before this invoke will
+  // not take effect.
+  if (cancellation_enabled_) (void)continue_invocation_.test_and_set();
+
+  // Denormal floating point numbers could cause significant slowdown on
+  // platforms like x86, therefore, we suppress denormals here to prevent this
+  // from happening.
+  ruy::ScopedSuppressDenormals suppress_denormals;
+
+  TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+      scoped_runtime_event, primary_subgraph().Invoke());
+
+  if (!allow_buffer_handle_output_) {
+    for (int tensor_index : outputs()) {
+      TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+          scoped_runtime_event,
+          primary_subgraph().EnsureTensorDataIsReadable(tensor_index));
+    }
+  }
+
+  return kTfLiteOk;
+}
+
+TfLiteStatus Interpreter::GPU_Invoke() {
+  ScopedRuntimeInstrumentationProfile scoped_runtime_event(root_profiler_.get(),
+                                                           "invoke");
+
+  // "Resets" cancellation flag so cancellation happens before this invoke will
+  // not take effect.
+  if (cancellation_enabled_) (void)continue_invocation_.test_and_set();
+
+  // Denormal floating point numbers could cause significant slowdown on
+  // platforms like x86, therefore, we suppress denormals here to prevent this
+  // from happening.
+  ruy::ScopedSuppressDenormals suppress_denormals;
+
+  TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+      scoped_runtime_event, gpu_subgraphs_.front()->Invoke());
+
+  if (!allow_buffer_handle_output_) {
+    for (int tensor_index : outputs()) {
+      TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+          scoped_runtime_event,
+          primary_subgraph().EnsureTensorDataIsReadable(tensor_index));
+    }
+  }
+
+  return kTfLiteOk;
+}
+
+TfLiteStatus Interpreter::Hexagon_Invoke() {
+  ScopedRuntimeInstrumentationProfile scoped_runtime_event(root_profiler_.get(),
+                                                           "invoke");
+
+  // "Resets" cancellation flag so cancellation happens before this invoke will
+  // not take effect.
+  if (cancellation_enabled_) (void)continue_invocation_.test_and_set();
+
+  // Denormal floating point numbers could cause significant slowdown on
+  // platforms like x86, therefore, we suppress denormals here to prevent this
+  // from happening.
+  ruy::ScopedSuppressDenormals suppress_denormals;
+
+  TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+      scoped_runtime_event, primary_subgraph().Invoke());
+
+  if (!allow_buffer_handle_output_) {
+    for (int tensor_index : outputs()) {
+      TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+          scoped_runtime_event,
+          primary_subgraph().EnsureTensorDataIsReadable(tensor_index));
+    }
+  }
+
+  return kTfLiteOk;
+}
+
+TfLiteStatus Interpreter::Other_Invoke() {
   ScopedRuntimeInstrumentationProfile scoped_runtime_event(root_profiler_.get(),
                                                            "invoke");
 
@@ -408,6 +526,89 @@ TfLiteStatus Interpreter::ModifyGraphWithDelegateImpl(
   }
   return status;
 }
+
+TfLiteStatus Interpreter::ModifyGraphWithGPUDelegateImpl(
+        TfLiteDelegate* delegate) {
+    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) %s:%s", __FILE__, __func__);
+    TfLiteStatus status = kTfLiteOk;
+    for (auto& subgraph : gpu_subgraphs_) {
+        if (IsValidationSubgraph(subgraph->GetName().c_str())) {
+            continue;
+        }
+        status = subgraph->ModifyGraphWithDelegate(delegate);
+        if (status != kTfLiteOk) {
+            break;
+        }
+    }
+    // Delegate-specific errors can be recovered from by restoring Interpreter to
+    // its original state.
+    if (status == kTfLiteDelegateError) {
+        TF_LITE_ENSURE_STATUS(RemoveAllDelegates());
+    }
+    return status;
+}
+
+TfLiteStatus Interpreter::ModifyGraphWithHexagonDelegateImpl(
+        TfLiteDelegate* delegate) {
+    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) %s:%s", __FILE__, __func__);
+    TfLiteStatus status = kTfLiteOk;
+    for (auto& subgraph : hexagon_subgraphs_) {
+        if (IsValidationSubgraph(subgraph->GetName().c_str())) {
+            continue;
+        }
+        status = subgraph->ModifyGraphWithDelegate(delegate);
+        if (status != kTfLiteOk) {
+            break;
+        }
+    }
+    // Delegate-specific errors can be recovered from by restoring Interpreter to
+    // its original state.
+    if (status == kTfLiteDelegateError) {
+        TF_LITE_ENSURE_STATUS(RemoveAllDelegates());
+    }
+    return status;
+}
+
+TfLiteStatus Interpreter::ModifyGraphWithTPUDelegateImpl(
+        TfLiteDelegate* delegate) {
+    TfLiteStatus status = kTfLiteOk;
+    for (auto& subgraph : tpu_subgraphs_) {
+        if (IsValidationSubgraph(subgraph->GetName().c_str())) {
+            continue;
+        }
+        status = subgraph->ModifyGraphWithDelegate(delegate);
+        if (status != kTfLiteOk) {
+            break;
+        }
+    }
+    // Delegate-specific errors can be recovered from by restoring Interpreter to
+    // its original state.
+    if (status == kTfLiteDelegateError) {
+        TF_LITE_ENSURE_STATUS(RemoveAllDelegates());
+    }
+    return status;
+}
+
+TfLiteStatus Interpreter::ModifyGraphWithOtherDelegateImpl(
+        TfLiteDelegate* delegate) {
+    TfLiteStatus status = kTfLiteOk;
+    for (auto& subgraph : other_subgraphs_) {
+        if (IsValidationSubgraph(subgraph->GetName().c_str())) {
+            continue;
+        }
+        status = subgraph->ModifyGraphWithDelegate(delegate);
+        if (status != kTfLiteOk) {
+            break;
+        }
+    }
+    // Delegate-specific errors can be recovered from by restoring Interpreter to
+    // its original state.
+    if (status == kTfLiteDelegateError) {
+        TF_LITE_ENSURE_STATUS(RemoveAllDelegates());
+    }
+    return status;
+}
+
 
 TfLiteStatus Interpreter::RemoveAllDelegates() {
   for (auto& subgraph : subgraphs_) {

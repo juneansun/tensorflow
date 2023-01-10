@@ -709,6 +709,7 @@ TfLiteStatus BenchmarkTfLiteModel::InitInterpreter() {
 }
 
 TfLiteStatus BenchmarkTfLiteModel::Init() {
+  sleep(3);
   TF_LITE_ENSURE_STATUS(LoadModel());
   TF_LITE_ENSURE_STATUS(InitInterpreter());
 
@@ -744,15 +745,7 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
   TFLITE_MAY_LOG(INFO, (created_delegates.size() >= 2))
       << "Going to apply " << created_delegates.size()
       << " delegates one after another.";
-
-  // If created_delegates is empty, 'require_full_delegation' flag will not be
-  // checked, thus CPU fallback will happen. Adding check here to avoid
-  // fallback in this situation.
-  if (created_delegates.empty() &&
-      params_.Get<bool>("require_full_delegation")) {
-    TFLITE_LOG(ERROR) << "Disallowed CPU fallback detected.";
-    return kTfLiteError;
-  }
+  TFLITE_LOG(WARN) << "(JBD) num delegates:  " << created_delegates.size();
   for (auto& created_delegate : created_delegates) {
     const auto* delegate_provider = created_delegate.provider;
     TfLiteDelegate* delegate = created_delegate.delegate.get();
@@ -764,7 +757,17 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
     // later.
     // Moving the delegate to a list of owned delegates to guarantee that.
     owned_delegates_.emplace_back(std::move(created_delegate.delegate));
-    if (interpreter_->ModifyGraphWithDelegate(delegate) != kTfLiteOk) {
+    // if (interpreter_->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    TfLiteStatus result;
+#if 1
+    if (delegate_provider->GetName().compare("GPU") == 0)
+        result = interpreter_->ModifyGraphWithGPUDelegate(delegate);
+    else if (delegate_provider->GetName().compare("Hexagon") == 0)
+        result = interpreter_->ModifyGraphWithHexagonDelegate(delegate);
+#endif
+        // result = interpreter_->ModifyGraphWithDelegate(delegate);
+
+    if (result != kTfLiteOk) {
       TFLITE_LOG(ERROR) << "Failed to apply " << delegate_provider->GetName()
                         << " delegate.";
       return kTfLiteError;
@@ -789,6 +792,7 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
           checked_node_ids.insert(node_id);
         }
       }
+#if 0
       bool fully_delegated = (num_delegated_kernels == 1 &&
                               interpreter_->execution_plan().size() == 1);
 
@@ -813,6 +817,7 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
             << " delegate is explicitly applied, the model graph will not be"
             << " executed by the delegate.";
       }
+#endif
     }
   }
 
@@ -912,7 +917,21 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
           !params_.Get<std::string>("profiling_output_csv_file").empty())));
 }
 
-TfLiteStatus BenchmarkTfLiteModel::RunImpl() { return interpreter_->Invoke(); }
+int cnt = 0;
+TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
+    cnt++;
+    if ((cnt & 1) == 1) {
+        TFLITE_LOG(WARN) << "normal invoke";
+        return interpreter_->Invoke();
+    }
+    else {
+        TFLITE_LOG(WARN) << "GPU invoke";
+        return interpreter_->GPU_Invoke(); // (JBD) test with force running GPU
+    }
+
+    if (cnt == 2)
+        cnt = 0;
+}
 
 }  // namespace benchmark
 }  // namespace tflite

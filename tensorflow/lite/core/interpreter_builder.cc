@@ -47,6 +47,7 @@ limitations under the License.
 #include "tensorflow/lite/string_type.h"
 #include "tensorflow/lite/util.h"
 #include "tensorflow/lite/version.h"
+#include "tensorflow/lite/minimal_logging.h"
 
 // aligned_alloc is available (via cstdlib/stdlib.h) with C++17/C11.
 #if __cplusplus >= 201703L || __STDC_VERSION__ >= 201112L
@@ -710,6 +711,48 @@ TfLiteStatus InterpreterBuilder::operator()(
   return (*this)(interpreter);
 }
 
+TfLiteStatus InterpreterBuilder::delegated_subgraph(tflite::Subgraph *modified_subgraph, const tflite::SubGraph *subgraph, int subgraph_index) {
+    auto operators = subgraph->operators();
+    auto tensors = subgraph->tensors();
+    auto* buffers = model_->buffers();
+
+    if (!tensors) {
+      TF_LITE_REPORT_ERROR(error_reporter_,
+                           "Did not get tensors in subgraph %d.\n",
+                           subgraph_index);
+      return kTfLiteError;
+    }
+    if (modified_subgraph->AddTensors(tensors->size()) != kTfLiteOk) {
+      return kTfLiteError;
+    }
+    // Parse inputs/outputs
+    modified_subgraph->SetInputs(
+        FlatBufferIntArrayToVector(subgraph->inputs()));
+    modified_subgraph->SetOutputs(
+        FlatBufferIntArrayToVector(subgraph->outputs()));
+
+    // Finally setup nodes and tensors
+    // Parse tensors before nodes as ParseNodes checks input tensors for the
+    // nodes.
+    if (ParseTensors(buffers, tensors, modified_subgraph) != kTfLiteOk)
+      return kTfLiteError;
+    if (operators && ParseNodes(operators, modified_subgraph) != kTfLiteOk)
+      return kTfLiteError;
+
+    std::vector<int> variables;
+    for (int i = 0; i < modified_subgraph->tensors_size(); ++i) {
+      auto* tensor = modified_subgraph->tensor(i);
+      if (tensor->is_variable) {
+        variables.push_back(i);
+      }
+    }
+    modified_subgraph->SetVariables(std::move(variables));
+    if (subgraph->name()) {
+      modified_subgraph->SetName(subgraph->name()->c_str());
+    }
+    return kTfLiteOk;
+}
+
 TfLiteStatus InterpreterBuilder::operator()(
     std::unique_ptr<Interpreter>* interpreter) {
   if (!interpreter) {
@@ -782,45 +825,15 @@ TfLiteStatus InterpreterBuilder::operator()(
 
   for (int subgraph_index = 0; subgraph_index < subgraphs->size();
        ++subgraph_index) {
+    TFLITE_LOG(tflite::TFLITE_LOG_WARNING, "(JBD) subgraph_index: %d", subgraph_index);
     const tflite::SubGraph* subgraph = (*subgraphs)[subgraph_index];
-    tflite::Subgraph* modified_subgraph =
-        (*interpreter)->subgraph(subgraph_index);
-    auto operators = subgraph->operators();
-    auto tensors = subgraph->tensors();
-    if (!tensors) {
-      TF_LITE_REPORT_ERROR(error_reporter_,
-                           "Did not get tensors in subgraph %d.\n",
-                           subgraph_index);
-      return cleanup_and_error();
-    }
-    if (modified_subgraph->AddTensors(tensors->size()) != kTfLiteOk) {
-      return cleanup_and_error();
-    }
-    // Parse inputs/outputs
-    modified_subgraph->SetInputs(
-        FlatBufferIntArrayToVector(subgraph->inputs()));
-    modified_subgraph->SetOutputs(
-        FlatBufferIntArrayToVector(subgraph->outputs()));
+    // tflite::Subgraph* modified_subgraph =
+    //     (*interpreter)->subgraph(subgraph_index);
 
-    // Finally setup nodes and tensors
-    // Parse tensors before nodes as ParseNodes checks input tensors for the
-    // nodes.
-    if (ParseTensors(buffers, tensors, modified_subgraph) != kTfLiteOk)
-      return cleanup_and_error();
-    if (operators && ParseNodes(operators, modified_subgraph) != kTfLiteOk)
-      return cleanup_and_error();
-
-    std::vector<int> variables;
-    for (int i = 0; i < modified_subgraph->tensors_size(); ++i) {
-      auto* tensor = modified_subgraph->tensor(i);
-      if (tensor->is_variable) {
-        variables.push_back(i);
-      }
-    }
-    modified_subgraph->SetVariables(std::move(variables));
-    if (subgraph->name()) {
-      modified_subgraph->SetName(subgraph->name()->c_str());
-    }
+    if (delegated_subgraph((*interpreter)->subgraph(subgraph_index), subgraph, subgraph_index) != kTfLiteOk)
+       cleanup_and_error();
+    if (delegated_subgraph((*interpreter)->gpu_subgraph(subgraph_index), subgraph, subgraph_index) != kTfLiteOk)
+        cleanup_and_error();
   }
 
   if (ParseSignatureDefs(model_->signature_defs(), interpreter->get()) !=
