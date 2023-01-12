@@ -764,9 +764,8 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
         result = interpreter_->ModifyGraphWithGPUDelegate(delegate);
     else if (delegate_provider->GetName().compare("Hexagon") == 0)
         result = interpreter_->ModifyGraphWithHexagonDelegate(delegate);
-    else
 #endif
-        result = interpreter_->ModifyGraphWithDelegate(delegate);
+        // result = interpreter_->ModifyGraphWithDelegate(delegate);
 
     if (result != kTfLiteOk) {
       TFLITE_LOG(ERROR) << "Failed to apply " << delegate_provider->GetName()
@@ -920,7 +919,18 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
 
 int cnt = 0;
 TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
-        return interpreter_->Invoke(); // (JBD) test with force running GPU
+    cnt++;
+    if ((cnt & 1) == 1) {
+        TFLITE_LOG(WARN) << "normal invoke";
+        return interpreter_->Invoke();
+    }
+    else {
+        TFLITE_LOG(WARN) << "GPU invoke";
+        return interpreter_->GPU_Invoke(); // (JBD) test with force running GPU
+    }
+
+    if (cnt == 2)
+        cnt = 0;
 }
 
 }  // namespace benchmark
