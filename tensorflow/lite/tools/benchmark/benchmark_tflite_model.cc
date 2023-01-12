@@ -743,8 +743,9 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
   tools::ProvidedDelegateList delegate_providers(&params_);
   auto created_delegates = delegate_providers.CreateAllRankedDelegates();
   TFLITE_MAY_LOG(INFO, (created_delegates.size() >= 2))
-      << "Going to apply " << created_delegates.size()
+      << " Going to apply " << created_delegates.size()
       << " delegates one after another.";
+  TFLITE_LOG(WARN) << "(JBD) num delegates:  " << created_delegates.size();
   for (auto& created_delegate : created_delegates) {
     const auto* delegate_provider = created_delegate.provider;
     TfLiteDelegate* delegate = created_delegate.delegate.get();
@@ -792,6 +793,7 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
           checked_node_ids.insert(node_id);
         }
       }
+#if 0
       bool fully_delegated = (num_delegated_kernels == 1 &&
                               interpreter_->execution_plan().size() == 1);
 
@@ -816,6 +818,7 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
             << " delegate is explicitly applied, the model graph will not be"
             << " executed by the delegate.";
       }
+#endif
     }
   }
 
@@ -917,14 +920,7 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
 
 int cnt = 0;
 TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
-    cnt++;
-    if ((cnt & 1) == 1)
-        return interpreter_->Invoke();
-    else
-        return interpreter_->GPU_Invoke(); // (JBD) test with force running GPU
-
-    if (cnt == 2)
-        cnt = 0;
+        return interpreter_->Invoke(); // (JBD) test with force running GPU
 }
 
 }  // namespace benchmark
