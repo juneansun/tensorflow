@@ -87,6 +87,10 @@ TfLiteStatus Interpreter::ModifyGraphWithHexagonDelegate(TfLiteDelegate* delegat
   return ModifyGraphWithHexagonDelegateImpl(delegate);
 }
 
+TfLiteStatus Interpreter::ModifyGraphWithTPUDelegate(TfLiteDelegate* delegate) {
+  return ModifyGraphWithTPUDelegateImpl(delegate);
+}
+
 bool Interpreter::HasDelegates() { return primary_subgraph().HasDelegates(); }
 
 TfLiteStatus Interpreter::SetBufferHandle(int tensor_index,

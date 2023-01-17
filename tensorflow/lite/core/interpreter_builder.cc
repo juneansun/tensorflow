@@ -834,6 +834,12 @@ TfLiteStatus InterpreterBuilder::operator()(
        cleanup_and_error();
     if (delegated_subgraph((*interpreter)->gpu_subgraph(subgraph_index), subgraph, subgraph_index) != kTfLiteOk)
         cleanup_and_error();
+    if (delegated_subgraph((*interpreter)->hexagon_subgraph(subgraph_index), subgraph, subgraph_index) != kTfLiteOk)
+        cleanup_and_error();
+    if (delegated_subgraph((*interpreter)->tpu_subgraph(subgraph_index), subgraph, subgraph_index) != kTfLiteOk)
+        cleanup_and_error();
+    if (delegated_subgraph((*interpreter)->other_subgraph(subgraph_index), subgraph, subgraph_index) != kTfLiteOk)
+        cleanup_and_error();
   }
 
   if (ParseSignatureDefs(model_->signature_defs(), interpreter->get()) !=

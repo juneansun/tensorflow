@@ -53,6 +53,8 @@ limitations under the License.
 #include "tensorflow/lite/tools/model_loader.h"
 #include "tensorflow/lite/tools/utils.h"
 
+#define SKKU
+
 void RegisterSelectedOps(::tflite::MutableOpResolver* resolver);
 
 // Version with Weak linker attribute doing nothing: if someone links this
@@ -759,13 +761,20 @@ TfLiteStatus BenchmarkTfLiteModel::Init() {
     owned_delegates_.emplace_back(std::move(created_delegate.delegate));
     // if (interpreter_->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
     TfLiteStatus result;
-#if 1
+
+    TFLITE_LOG(WARN) << "(JBD) provider name: " << delegate_provider->GetName();
+#ifdef SKKU
     if (delegate_provider->GetName().compare("GPU") == 0)
         result = interpreter_->ModifyGraphWithGPUDelegate(delegate);
     else if (delegate_provider->GetName().compare("Hexagon") == 0)
         result = interpreter_->ModifyGraphWithHexagonDelegate(delegate);
+    else if (delegate_provider->GetName().compare("NNAPI") == 0) // we treat nnapi as TPU
+        result = interpreter_->ModifyGraphWithTPUDelegate(delegate);
+    else if (delegate_provider->GetName().compare("Other") == 0)
+        result = interpreter_->ModifyGraphWithOtherDelegate(delegate);
+#else
+        result = interpreter_->ModifyGraphWithDelegate(delegate);
 #endif
-        // result = interpreter_->ModifyGraphWithDelegate(delegate);
 
     if (result != kTfLiteOk) {
       TFLITE_LOG(ERROR) << "Failed to apply " << delegate_provider->GetName()
@@ -919,18 +928,34 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
 
 int cnt = 0;
 TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
-    cnt++;
-    if ((cnt & 1) == 1) {
+#ifdef SKKU
+    TfLiteStatus state;
+
+    if ((cnt % 4) == 0) {
         TFLITE_LOG(WARN) << "normal invoke";
-        return interpreter_->Invoke();
+        state = interpreter_->Invoke();
+    }
+    else if((cnt % 4) == 1){
+        TFLITE_LOG(WARN) << "GPU invoke";
+        state = interpreter_->GPU_Invoke(); // (JBD) test with force running GPU
+    }
+    else if((cnt % 4) == 2){
+        TFLITE_LOG(WARN) << "Hexagon invoke";
+        state = interpreter_->Hexagon_Invoke(); // (JBD) test with force running GPU
     }
     else {
-        TFLITE_LOG(WARN) << "GPU invoke";
-        return interpreter_->GPU_Invoke(); // (JBD) test with force running GPU
+        TFLITE_LOG(WARN) << "TPU invoke";
+        state = interpreter_->TPU_Invoke(); // (JBD) test with force running GPU
     }
 
-    if (cnt == 2)
+    cnt++;
+    if (cnt == 4)
         cnt = 0;
+
+    return state;
+#else
+        return interpreter_->Invoke();
+#endif
 }
 
 }  // namespace benchmark

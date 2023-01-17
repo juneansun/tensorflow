@@ -498,6 +498,7 @@ class Interpreter {
   TfLiteStatus Invoke();
   TfLiteStatus GPU_Invoke();
   TfLiteStatus Hexagon_Invoke();
+  TfLiteStatus TPU_Invoke();
   TfLiteStatus Other_Invoke();
 
   /// Set the number of threads available to the interpreter.
@@ -574,7 +575,7 @@ class Interpreter {
   TfLiteStatus ModifyGraphWithDelegate(TfLiteDelegate* delegate);
   TfLiteStatus ModifyGraphWithGPUDelegate(TfLiteDelegate * delegates);
   TfLiteStatus ModifyGraphWithHexagonDelegate(TfLiteDelegate * delegates);
-  TfLiteStatus ModifyGraphWithTPUDelegate(TfLiteDelegate * delegates) {} ;
+  TfLiteStatus ModifyGraphWithTPUDelegate(TfLiteDelegate * delegates);
   TfLiteStatus ModifyGraphWithOtherDelegate(TfLiteDelegate * delegates) {} ;
 
   // Owning handle to a TfLiteDelegate instance.
@@ -759,10 +760,37 @@ class Interpreter {
   /// \warning This is an experimental API and subject to change.
   Subgraph* gpu_subgraph(int subgraph_index) {
     if (subgraph_index < 0 ||
-        static_cast<size_t>(subgraph_index) >= subgraphs_size()) {
+        static_cast<size_t>(subgraph_index) >= gpu_subgraphs_.size()) {
       return nullptr;
     }
     return gpu_subgraphs_[subgraph_index].get();
+  }
+
+  /// \warning This is an experimental API and subject to change.
+  Subgraph* hexagon_subgraph(int subgraph_index) {
+    if (subgraph_index < 0 ||
+        static_cast<size_t>(subgraph_index) >= hexagon_subgraphs_.size()) {
+      return nullptr;
+    }
+    return hexagon_subgraphs_[subgraph_index].get();
+  }
+
+  /// \warning This is an experimental API and subject to change.
+  Subgraph* tpu_subgraph(int subgraph_index) {
+    if (subgraph_index < 0 ||
+        static_cast<size_t>(subgraph_index) >= tpu_subgraphs_.size()) {
+      return nullptr;
+    }
+    return tpu_subgraphs_[subgraph_index].get();
+  }
+
+  /// \warning This is an experimental API and subject to change.
+  Subgraph* other_subgraph(int subgraph_index) {
+    if (subgraph_index < 0 ||
+        static_cast<size_t>(subgraph_index) >= other_subgraphs_.size()) {
+      return nullptr;
+    }
+    return other_subgraphs_[subgraph_index].get();
   }
 
   /// \warning Experimental interface, subject to change.

@@ -304,7 +304,7 @@ TfLiteStatus Interpreter::GPU_Invoke() {
     for (int tensor_index : outputs()) {
       TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
           scoped_runtime_event,
-          primary_subgraph().EnsureTensorDataIsReadable(tensor_index));
+          gpu_subgraphs_.front()->EnsureTensorDataIsReadable(tensor_index));
     }
   }
 
@@ -325,13 +325,40 @@ TfLiteStatus Interpreter::Hexagon_Invoke() {
   ruy::ScopedSuppressDenormals suppress_denormals;
 
   TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
-      scoped_runtime_event, primary_subgraph().Invoke());
+      scoped_runtime_event, hexagon_subgraphs_.front()->Invoke());
 
   if (!allow_buffer_handle_output_) {
     for (int tensor_index : outputs()) {
       TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
           scoped_runtime_event,
-          primary_subgraph().EnsureTensorDataIsReadable(tensor_index));
+          hexagon_subgraphs_.front()->EnsureTensorDataIsReadable(tensor_index));
+    }
+  }
+
+  return kTfLiteOk;
+}
+
+TfLiteStatus Interpreter::TPU_Invoke() {
+  ScopedRuntimeInstrumentationProfile scoped_runtime_event(root_profiler_.get(),
+                                                           "invoke");
+
+  // "Resets" cancellation flag so cancellation happens before this invoke will
+  // not take effect.
+  if (cancellation_enabled_) (void)continue_invocation_.test_and_set();
+
+  // Denormal floating point numbers could cause significant slowdown on
+  // platforms like x86, therefore, we suppress denormals here to prevent this
+  // from happening.
+  ruy::ScopedSuppressDenormals suppress_denormals;
+
+  TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+      scoped_runtime_event, tpu_subgraphs_.front()->Invoke());
+
+  if (!allow_buffer_handle_output_) {
+    for (int tensor_index : outputs()) {
+      TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+          scoped_runtime_event,
+          tpu_subgraphs_.front()->EnsureTensorDataIsReadable(tensor_index));
     }
   }
 
@@ -352,13 +379,13 @@ TfLiteStatus Interpreter::Other_Invoke() {
   ruy::ScopedSuppressDenormals suppress_denormals;
 
   TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
-      scoped_runtime_event, primary_subgraph().Invoke());
+      scoped_runtime_event, other_subgraphs_.front()->Invoke());
 
   if (!allow_buffer_handle_output_) {
     for (int tensor_index : outputs()) {
       TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
           scoped_runtime_event,
-          primary_subgraph().EnsureTensorDataIsReadable(tensor_index));
+          other_subgraphs_.front()->EnsureTensorDataIsReadable(tensor_index));
     }
   }
 
