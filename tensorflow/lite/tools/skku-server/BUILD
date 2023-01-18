@@ -17,9 +17,9 @@ common_copts = tflite_copts() + tflite_copts_warnings()
 # dependency, e.g., enabling creating of benchmark binaries with a custom
 # delegate provider.
 cc_library(
-    name = "benchmark_model_main",
+    name = "sched_server_main",
     srcs = [
-        "benchmark_main.cc",
+        "sched_server_main.cc",
     ],
     copts = common_copts,
     deps = [
@@ -29,7 +29,7 @@ cc_library(
 )
 
 cc_binary(
-    name = "benchmark_model",
+    name = "sched_server",
     copts = common_copts,
     linkopts = tflite_linkopts() + select({
         "//tensorflow:android": [
@@ -41,7 +41,36 @@ cc_binary(
     }),
     tags = ["builder_default_android_arm64"],
     deps = [
-        ":benchmark_model_main",
+        ":sched_server_main",
+    ],
+)
+
+cc_library(
+    name = "sched_client_main",
+    srcs = [
+        "sched_clinet_main.cc",
+    ],
+    copts = common_copts,
+    deps = [
+        ":benchmark_tflite_model_lib",
+        "//tensorflow/lite/tools:logging",
+    ],
+)
+
+cc_binary(
+    name = "sched_client",
+    copts = common_copts,
+    linkopts = tflite_linkopts() + select({
+        "//tensorflow:android": [
+            "-pie",  # Android 5.0 and later supports only PIE
+            "-lm",  # some builtin ops, e.g., tanh, need -lm
+            "-Wl,--rpath=/data/local/tmp/",  # Hexagon delegate libraries should be in /data/local/tmp
+        ],
+        "//conditions:default": [],
+    }),
+    tags = ["builder_default_android_arm64"],
+    deps = [
+        ":sched_client_main",
     ],
 )
 

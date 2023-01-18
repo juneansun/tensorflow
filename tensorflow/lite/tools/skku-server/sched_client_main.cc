@@ -23,11 +23,6 @@ namespace benchmark {
 
 int Main(int argc, char** argv) {
   TFLITE_LOG(INFO) << "STARTING!";
-  BenchmarkTfLiteModel benchmark;
-  if (benchmark.Run(argc, argv) != kTfLiteOk) {
-    TFLITE_LOG(ERROR) << "Benchmarking failed.";
-    return EXIT_FAILURE;
-  }
   return EXIT_SUCCESS;
 }
 }  // namespace benchmark
