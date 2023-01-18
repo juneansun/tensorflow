@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/tools/benchmark/experimental/c/benchmark_c_api.h"
+#include "tensorflow/lite/tools/skku-server/experimental/c/benchmark_c_api.h"
 
 #include <utility>
 
-#include "tensorflow/lite/tools/benchmark/benchmark_tflite_model.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_tflite_model.h"
 #include "tensorflow/tsl/util/stats_calculator.h"
 
 extern "C" {

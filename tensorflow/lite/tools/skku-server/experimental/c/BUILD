@@ -9,13 +9,13 @@ package(
 package_group(
     name = "benchmark",
     packages = [
-        "//tensorflow/lite/tools/benchmark/...",
+        "//tensorflow/lite/tools/skku-server/...",
     ],
 )
 
 exports_files(
     ["benchmark_c_api.h"],
-    visibility = ["//tensorflow/lite/tools/benchmark/experimental/c:benchmark"],
+    visibility = ["//tensorflow/lite/tools/skku-server/experimental/c:benchmark"],
 )
 
 cc_library(
@@ -30,7 +30,7 @@ cc_library(
     ],
     deps = [
         "//tensorflow/lite/core/c:c_api_types",
-        "//tensorflow/lite/tools/benchmark:benchmark_tflite_model_lib",
+        "//tensorflow/lite/tools/skku-server:benchmark_tflite_model_lib",
         "//tensorflow/tsl/util:stats_calculator_portable",
     ],
 )

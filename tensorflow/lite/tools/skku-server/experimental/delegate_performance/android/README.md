@@ -4,7 +4,7 @@
 
 This Android Delegate Performance Benchmark app is a simple wrapper around the
 TensorFlow Lite
-[benchmark tool](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/benchmark)
+[benchmark tool](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/skku-server)
 and
 [MiniBenchmark](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/experimental/acceleration/mini_benchmark).
 
@@ -39,7 +39,7 @@ apps.
 ```
 bazel build -c opt \
   --config=android_arm64 \
-  tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:delegate_performance_benchmark
+  tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:delegate_performance_benchmark
 ```
 
 ### Install
@@ -47,7 +47,7 @@ bazel build -c opt \
 1.  Connect your phone. Install the benchmark APK on your phone with adb:
 
 ```
-adb install -r -d -g bazel-bin/tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/delegate_performance_benchmark.apk
+adb install -r -d -g bazel-bin/tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/delegate_performance_benchmark.apk
 ```
 
 Note: Make sure to install with "-g" option to grant the permission for reading
@@ -62,7 +62,7 @@ external storage.
 -   `tflite_settings_files`: `str` (required) the comma-delimited paths to the
     JSON-encoded delegate `TFLiteSettings` file(s), which is defined in [configuration.proto](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/experimental/acceleration/configuration/configuration.proto).
 -   Additional optional command-line flags are documented
-    [here](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/benchmark/README.md)
+    [here](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/skku-server/README.md)
     and can be appended to the `args` string (note that all args must be nested
     in the single quoted string that follows the args key). {value=2}
 

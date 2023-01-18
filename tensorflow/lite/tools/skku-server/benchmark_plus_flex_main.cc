@@ -14,7 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include "tensorflow/lite/testing/init_tensorflow.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_tflite_model.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_tflite_model.h"
 #include "tensorflow/lite/tools/logging.h"
 
 namespace tflite {

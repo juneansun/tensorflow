@@ -36,7 +36,7 @@ import tflite.StableDelegateLoaderSettings;
  *
  * <p>It performs latency benchmark tests via TFLite Benchmark Tool based on the input arguments.
  * Please check the test example in
- * tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/README.md.
+ * tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/README.md.
  *
  * <p>Generates a CSV file under delegate_performance_result/latency folder to describe the
  * benchmark results for each model.

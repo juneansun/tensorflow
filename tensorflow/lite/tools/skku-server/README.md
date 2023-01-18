@@ -9,12 +9,12 @@ of runs. Aggregate latency statistics are reported after running the benchmark.
 
 The instructions below are for running the binary on Desktop and Android,
 for iOS please use the
-[iOS benchmark app](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/benchmark/ios).
+[iOS benchmark app](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/skku-server/ios).
 
 An experimental Android APK wrapper for the benchmark model utility offers more
 faithful execution behavior on Android (via a foreground Activity). It is
 located
-[here](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/benchmark/android).
+[here](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/skku-server/android).
 
 ## Parameters
 
@@ -107,9 +107,9 @@ and the following optional parameters:
     When the feature is enabled, `release_dynamic_tensors` is also enabled.
 
 This list of parameters is not exhaustive. See
-[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/tools/benchmark/benchmark_model.cc)
+[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/tools/skku-server/benchmark_model.cc)
 and
-[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/tools/benchmark/benchmark_tflite_model.cc)
+[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/tools/skku-server/benchmark_tflite_model.cc)
 for all parameters that the binary takes.
 
 ### Model input parameters
@@ -240,14 +240,14 @@ delegate first, and then the XNNPACK delegate secondly.
 ```
 bazel build -c opt \
   --config=android_arm64 \
-  tensorflow/lite/tools/benchmark:benchmark_model
+  tensorflow/lite/tools/skku-server:benchmark_model
 ```
 
 (2) Connect your phone. Push the binary to your phone with adb push
      (make the directory if required):
 
 ```
-adb push bazel-bin/tensorflow/lite/tools/benchmark/benchmark_model /data/local/tmp
+adb push bazel-bin/tensorflow/lite/tools/skku-server/benchmark_model /data/local/tmp
 ```
 
 (3) Make the binary executable.
@@ -285,14 +285,14 @@ adb shell /data/local/tmp/benchmark_model \
 (1) build the binary
 
 ```
-bazel build -c opt tensorflow/lite/tools/benchmark:benchmark_model
+bazel build -c opt tensorflow/lite/tools/skku-server:benchmark_model
 ```
 
 (2) Run on your compute graph, similar to the Android case but without the need of adb shell.
 For example:
 
 ```
-bazel-bin/tensorflow/lite/tools/benchmark/benchmark_model \
+bazel-bin/tensorflow/lite/tools/skku-server/benchmark_model \
   --graph=mobilenet_quant_v1_224.tflite \
   --num_threads=4
 ```
@@ -432,7 +432,7 @@ To build the tool, you need to use 'benchmark_model_plus_flex' target with
 ```
 bazel build -c opt \
   --config=monolithic \
-  tensorflow/lite/tools/benchmark:benchmark_model_plus_flex
+  tensorflow/lite/tools/skku-server:benchmark_model_plus_flex
 ```
 
 ### How to benchmark tflite model with Tensorflow ops
@@ -441,6 +441,6 @@ Tensorflow ops support just works the benchmark tool is built with Tensorflow
 ops support. It doesn't require any additional option to use it.
 
 ```
-bazel-bin/tensorflow/lite/tools/benchmark/benchmark_model_plus_flex \
+bazel-bin/tensorflow/lite/tools/skku-server/benchmark_model_plus_flex \
   --graph=model_converted_with_TF_ops.tflite \
 ```

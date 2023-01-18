@@ -3,7 +3,7 @@
 ## Description
 
 This Android benchmark app is a simple wrapper around the TensorFlow Lite
-[command-line benchmark utility](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/benchmark).
+[command-line benchmark utility](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/skku-server).
 
 Pushing and executing binaries directly on an Android device is a valid approach
 to benchmarking, but it can result in subtle (but observable) differences in
@@ -28,7 +28,7 @@ to edit the `WORKSPACE` to configure the android NDK/SDK.
 ```
 bazel build -c opt \
   --config=android_arm64 \
-  tensorflow/lite/tools/benchmark/android:benchmark_model
+  tensorflow/lite/tools/skku-server/android:benchmark_model
 ```
 
 (Optional) To enable Hexagon delegate with `--use_hexagon=true` option, you can
@@ -54,7 +54,7 @@ return ["//third_party/hexagon_nn_skel:libhexagon_nn_skel"]
 (2) Connect your phone. Install the benchmark APK to your phone with adb:
 
 ```
-adb install -r -d -g bazel-bin/tensorflow/lite/tools/benchmark/android/benchmark_model.apk
+adb install -r -d -g bazel-bin/tensorflow/lite/tools/skku-server/android/benchmark_model.apk
 ```
 
 Note: Make sure to install with "-g" option to grant the permission for reading
@@ -67,7 +67,7 @@ adb push mobilenet_quant_v1_224.tflite /data/local/tmp
 ```
 
 (4) Run the benchmark. Additional command-line flags are documented
-[here](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/benchmark/README.md)
+[here](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/skku-server/README.md)
 and can be appended to the `args` string alongside the required `--graph` flag
 (note that all args must be nested in the single quoted string that follows the
 args key).

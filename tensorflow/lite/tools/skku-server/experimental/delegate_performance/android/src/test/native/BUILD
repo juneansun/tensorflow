@@ -17,7 +17,7 @@
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
-    default_visibility = ["//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:__subpackages__"],
+    default_visibility = ["//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:__subpackages__"],
     licenses = ["notice"],
 )
 
@@ -32,8 +32,8 @@ cc_test(
     deps = [
         "//tensorflow/lite/delegates/utils/experimental/stable_delegate:tflite_settings_json_parser",
         "//tensorflow/lite/experimental/acceleration/configuration:configuration_fbs",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto:delegate_performance_cc_proto",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/src/main/native:latency_benchmark",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto:delegate_performance_cc_proto",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/src/main/native:latency_benchmark",
         "@com_google_googletest//:gtest_main",
         "@flatbuffers",
     ],
@@ -52,8 +52,8 @@ cc_test(
         "//tensorflow/lite/experimental/acceleration/configuration:configuration_fbs",
         "//tensorflow/lite/experimental/acceleration/mini_benchmark:embedded_mobilenet_validation_model",
         "//tensorflow/lite/experimental/acceleration/mini_benchmark:mini_benchmark_test_helper",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/src/main/native:accuracy_benchmark",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/src/main/native:status_codes",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/src/main/native:accuracy_benchmark",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/src/main/native:status_codes",
         "@com_google_googletest//:gtest_main",
         "@flatbuffers",
     ],

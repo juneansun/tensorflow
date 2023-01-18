@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/src/main/native/latency_benchmark.h"
+#include "tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/src/main/native/latency_benchmark.h"
 
 #include <errno.h>
 #include <sys/stat.h>
@@ -32,8 +32,8 @@ limitations under the License.
 #include "tensorflow/lite/logger.h"
 #include "tensorflow/lite/minimal_logging.h"
 #include "tensorflow/lite/profiling/memory_info.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_tflite_model.h"
-#include "tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto/delegate_performance.pb.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_tflite_model.h"
+#include "tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto/delegate_performance.pb.h"
 
 namespace tflite {
 namespace benchmark {
@@ -132,7 +132,7 @@ class DelegatePerformanceReportingListener : public BenchmarkListener {
 };
 
 // Converts the input TFLiteSettings into TFLite Benchmark Tool arguments.
-// Please see tensorflow/lite/tools/benchmark.
+// Please see tensorflow/lite/tools/skku-server.
 std::vector<std::string> ParseArgumentsFromTfLiteSettings(
     const TFLiteSettings& tflite_settings,
     const std::string& tflite_settings_path) {

@@ -12,12 +12,12 @@ strip_common_include_path_prefix(
     hdr_labels = [
         "//tensorflow/lite/core/c:c_api_types.h",
         "//tensorflow/lite/tools:logging.h",
-        "//tensorflow/lite/tools/benchmark/experimental/c:benchmark_c_api.h",
+        "//tensorflow/lite/tools/skku-server/experimental/c:benchmark_c_api.h",
     ],
 )
 
 # Main target for the benchmark tool iOS framework.
-# bazel build --config=ios_fat -c opt //tensorflow/lite/tools/benchmark/experimental/ios:TensorFlowLiteBenchmarkC_framework
+# bazel build --config=ios_fat -c opt //tensorflow/lite/tools/skku-server/experimental/ios:TensorFlowLiteBenchmarkC_framework
 ios_static_framework(
     name = "TensorFlowLiteBenchmarkC_framework",
     hdrs = [
@@ -28,7 +28,7 @@ ios_static_framework(
     bundle_name = "TensorFlowLiteBenchmarkC",
     minimum_os_version = TFL_MINIMUM_OS_VERSION,
     deps = [
-        "//tensorflow/lite/tools/benchmark/experimental/c:benchmark_c_api",
+        "//tensorflow/lite/tools/skku-server/experimental/c:benchmark_c_api",
     ],
 )
 

@@ -1,12 +1,12 @@
 # Description:
 #  Holds model-specific files. The app will bundle the files into assets.
 
-load("//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:proto.bzl", "proto_data")
+load("//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:proto.bzl", "proto_data")
 load("//tensorflow/lite/experimental/acceleration/mini_benchmark:build_defs.bzl", "validation_model")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
-    default_visibility = ["//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:__subpackages__"],
+    default_visibility = ["//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:__subpackages__"],
     licenses = ["notice"],
 )
 
@@ -72,7 +72,7 @@ proto_data(
     name = "mobilenet_v1_1_0_224_latency_criteria",
     src = "mobilenet_v1_1.0_224.textproto",
     out = "assets/proto/mobilenet_v1_1.0_224.binarypb",
-    proto_deps = ["//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto:delegate_performance_proto"],
+    proto_deps = ["//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto:delegate_performance_proto"],
     proto_name = "tflite.proto.benchmark.LatencyCriteria",
 )
 
@@ -80,6 +80,6 @@ proto_data(
     name = "mobilenet_v1_1_0_224_quant_latency_criteria",
     src = "mobilenet_v1_1.0_224_quant.textproto",
     out = "assets/proto/mobilenet_v1_1.0_224_quant.binarypb",
-    proto_deps = ["//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto:delegate_performance_proto"],
+    proto_deps = ["//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto:delegate_performance_proto"],
     proto_name = "tflite.proto.benchmark.LatencyCriteria",
 )

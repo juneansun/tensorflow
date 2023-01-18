@@ -49,7 +49,7 @@ APK_VARIANTS = [
     ]),
     deps = [
         "//tensorflow/lite/java/jni",
-        "//tensorflow/lite/tools/benchmark:benchmark_tflite_model_lib",
+        "//tensorflow/lite/tools/skku-server:benchmark_tflite_model_lib",
     ] + extra_deps,
 ) for suffix, extra_deps in APK_VARIANTS]
 

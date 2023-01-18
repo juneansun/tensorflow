@@ -21,8 +21,8 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/lite/core/c/c_api_types.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_model.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_params.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_model.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_params.h"
 
 namespace tflite {
 namespace benchmark {

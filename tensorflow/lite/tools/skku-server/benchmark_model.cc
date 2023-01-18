@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/tools/benchmark/benchmark_model.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_model.h"
 
 #ifdef __linux__
 #include <unistd.h>
@@ -26,7 +26,7 @@ limitations under the License.
 
 #include "tensorflow/lite/profiling/memory_info.h"
 #include "tensorflow/lite/profiling/time.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_utils.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_utils.h"
 #include "tensorflow/lite/tools/logging.h"
 
 namespace tflite {

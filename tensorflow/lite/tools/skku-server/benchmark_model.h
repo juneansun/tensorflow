@@ -29,7 +29,7 @@ limitations under the License.
 #include "tensorflow/lite/core/c/common.h"
 #include "tensorflow/lite/profiling/memory_info.h"
 #include "tensorflow/lite/profiling/memory_usage_monitor.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_params.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_params.h"
 #include "tensorflow/lite/tools/command_line_flags.h"
 
 namespace tflite {

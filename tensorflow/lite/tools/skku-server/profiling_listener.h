@@ -22,7 +22,7 @@ limitations under the License.
 #include "tensorflow/lite/profiling/buffered_profiler.h"
 #include "tensorflow/lite/profiling/profile_summarizer.h"
 #include "tensorflow/lite/profiling/profile_summary_formatter.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_model.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_model.h"
 
 namespace tflite {
 namespace benchmark {

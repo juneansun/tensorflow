@@ -37,7 +37,7 @@ tflite_jni_binary(
     ]),
     deps = [
         "//tensorflow/lite/java/jni",
-        "//tensorflow/lite/tools/benchmark:benchmark_tflite_model_lib",
+        "//tensorflow/lite/tools/skku-server:benchmark_tflite_model_lib",
     ],
 )
 

@@ -25,7 +25,7 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
-#include "tensorflow/lite/tools/benchmark/benchmark_tflite_model.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_tflite_model.h"
 
 #ifdef __ANDROID__
 #include <android/log.h>

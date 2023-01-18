@@ -26,7 +26,7 @@ limitations under the License.
 
 #include "tensorflow/lite/core/model.h"
 #include "tensorflow/lite/profiling/profiler.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_model.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_model.h"
 #include "tensorflow/lite/tools/model_loader.h"
 #include "tensorflow/lite/tools/utils.h"
 

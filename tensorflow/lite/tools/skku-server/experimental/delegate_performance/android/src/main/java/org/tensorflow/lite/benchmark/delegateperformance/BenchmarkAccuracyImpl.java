@@ -29,7 +29,7 @@ import tflite.BenchmarkEvent;
  *
  * <p>It performs accuracy benchmark tests via TFLite MiniBenchmark based on the input arguments.
  * Please check the test example in
- * tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/README.md.
+ * tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/README.md.
  *
  * <p>TODO(b/250877013): Consider improving the app's I/O interfaces.
  *

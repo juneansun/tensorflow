@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/tools/benchmark/benchmark_performance_options.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_performance_options.h"
 
 #include <algorithm>
 #include <iomanip>
@@ -31,8 +31,8 @@ limitations under the License.
 #include "tensorflow/lite/nnapi/nnapi_util.h"
 #endif
 #include "tensorflow/lite/profiling/time.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_params.h"
-#include "tensorflow/lite/tools/benchmark/benchmark_utils.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_params.h"
+#include "tensorflow/lite/tools/skku-server/benchmark_utils.h"
 #include "tensorflow/lite/tools/command_line_flags.h"
 #include "tensorflow/lite/tools/logging.h"
 

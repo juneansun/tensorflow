@@ -6,7 +6,7 @@ load("//tensorflow:tensorflow.bzl", "clean_dep")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
-    default_visibility = ["//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:__subpackages__"],
+    default_visibility = ["//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:__subpackages__"],
     licenses = ["notice"],
 )
 
@@ -19,7 +19,7 @@ tflite_jni_binary(
         "//tensorflow/lite/delegates/utils/experimental/stable_delegate:tflite_settings_json_parser",
         "//tensorflow/lite/experimental/acceleration/configuration:configuration_fbs",
         "//tensorflow/lite/java/jni",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto:delegate_performance_cc_proto",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto:delegate_performance_cc_proto",
         "@flatbuffers",
     ],
 )
@@ -38,8 +38,8 @@ cc_library(
         "//tensorflow/lite:minimal_logging",
         "//tensorflow/lite/experimental/acceleration/configuration:configuration_fbs",
         "//tensorflow/lite/profiling:memory_info",
-        "//tensorflow/lite/tools/benchmark:benchmark_tflite_model_lib",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto:delegate_performance_cc_proto",
+        "//tensorflow/lite/tools/skku-server:benchmark_tflite_model_lib",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto:delegate_performance_cc_proto",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
     ],

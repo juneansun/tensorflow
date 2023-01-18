@@ -26,7 +26,7 @@ import android.util.Log;
  * <p>This Activity receives test arguments via a command line specified in an intent extra. It
  * passes the arguments to the {@link BenchmarkLatencyImpl} class to perform latency benchmark tests
  * via TFLite Benchmark Tool. Please check the test example in
- * tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/README.md.
+ * tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/README.md.
  */
 public class BenchmarkLatencyActivity extends Activity {
 

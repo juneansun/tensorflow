@@ -15,11 +15,11 @@ android_library(
     srcs = glob([
         "src/main/java/**/*.java",
     ]),
-    visibility = ["//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:__subpackages__"],
+    visibility = ["//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:__subpackages__"],
     deps = [
         "//tensorflow/lite/experimental/acceleration/configuration:configuration_fbs_android",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto:delegate_performance_java_proto_lite",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/src/main/native:tensorflowlite_delegate_performance_benchmark_native",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto:delegate_performance_java_proto_lite",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/src/main/native:tensorflowlite_delegate_performance_benchmark_native",
         "@flatbuffers//:runtime_android",
     ],
 )
@@ -28,10 +28,10 @@ android_library(
 android_binary(
     name = "delegate_performance_benchmark",
     assets = [
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/models:accuracy_models",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/models:latency_criteria_files",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/models:latency_models",
-        "//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto:default_latency_criteria",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/models:accuracy_models",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/models:latency_criteria_files",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/models:latency_models",
+        "//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto:default_latency_criteria",
     ],
     assets_dir = "assets",
     custom_package = "org.tensorflow.lite.benchmark.delegate_performance",

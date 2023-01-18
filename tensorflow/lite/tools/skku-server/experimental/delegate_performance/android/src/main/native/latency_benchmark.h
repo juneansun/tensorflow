@@ -20,7 +20,7 @@ limitations under the License.
 #include <vector>
 
 #include "tensorflow/lite/experimental/acceleration/configuration/configuration_generated.h"
-#include "tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/proto/delegate_performance.pb.h"
+#include "tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/proto/delegate_performance.pb.h"
 
 namespace tflite {
 namespace benchmark {

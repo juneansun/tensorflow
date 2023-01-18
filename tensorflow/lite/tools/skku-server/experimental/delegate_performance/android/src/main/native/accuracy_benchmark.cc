@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/src/main/native/accuracy_benchmark.h"
+#include "tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/src/main/native/accuracy_benchmark.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -37,7 +37,7 @@ limitations under the License.
 #include "tensorflow/lite/experimental/acceleration/mini_benchmark/validator_runner_options.h"
 #include "tensorflow/lite/logger.h"
 #include "tensorflow/lite/minimal_logging.h"
-#include "tensorflow/lite/tools/benchmark/experimental/delegate_performance/android/src/main/native/status_codes.h"
+#include "tensorflow/lite/tools/skku-server/experimental/delegate_performance/android/src/main/native/status_codes.h"
 
 namespace tflite {
 namespace benchmark {

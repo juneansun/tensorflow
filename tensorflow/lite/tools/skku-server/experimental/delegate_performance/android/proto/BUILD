@@ -1,11 +1,11 @@
 # Description:
 #  Holds model-agnostic files and proto definitions. The app will bundle the files into assets.
 
-load("//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:proto.bzl", "proto_data")
+load("//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:proto.bzl", "proto_data")
 
 package(
     # copybara:uncomment default_applicable_licenses = ["//tensorflow:license"],
-    default_visibility = ["//tensorflow/lite/tools/benchmark/experimental/delegate_performance/android:__subpackages__"],
+    default_visibility = ["//tensorflow/lite/tools/skku-server/experimental/delegate_performance/android:__subpackages__"],
     licenses = ["notice"],
 )
 

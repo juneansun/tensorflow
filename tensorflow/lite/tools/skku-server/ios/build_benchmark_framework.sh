@@ -17,7 +17,7 @@
 set -e
 
 WORKSPACE_ROOT=$(bazel info workspace 2> /dev/null)
-BENCHMARK_DIR=tensorflow/lite/tools/benchmark
+BENCHMARK_DIR=tensorflow/lite/tools/skku-server
 DEST_DIR="${BENCHMARK_DIR}/ios/TFLiteBenchmark/TFLiteBenchmark/Frameworks"
 FRAMEWORK_TARGET=TensorFlowLiteBenchmarkC_framework
 
