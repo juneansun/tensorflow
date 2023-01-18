@@ -17,7 +17,7 @@ limitations under the License.
 
 #include <android/log.h>
 
-#define  LOG_TAG    "tflite_ched_server"
+#define  LOG_TAG    "tflite_sched_server"
 #define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 
 namespace tflite {

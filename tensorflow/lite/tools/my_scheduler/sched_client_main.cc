@@ -15,14 +15,19 @@ limitations under the License.
 
 #include <iostream>
 
-#include "tensorflow/lite/tools/my_scheduler/benchmark_tflite_model.h"
-#include "tensorflow/lite/tools/logging.h"
+#include <android/log.h>
+
+#define  LOG_TAG    "tflite_sched_client"
+#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 
 namespace tflite {
 namespace benchmark {
 
 int Main(int argc, char** argv) {
-  TFLITE_LOG(INFO) << "STARTING!";
+  LOGW("client main");
+
+  fprintf(stderr, "(JBD) client main2\n");
+
   return EXIT_SUCCESS;
 }
 }  // namespace benchmark
