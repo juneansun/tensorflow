@@ -18,9 +18,8 @@ common_copts = tflite_copts() + tflite_copts_warnings()
 # delegate provider.
 cc_library(
     name = "sched_server_main",
-    srcs = [
-        "sched_server_main.cc",
-    ],
+    srcs = ["sched_server_main.cc"],
+    hdrs = ["sched_logger.h"],
     copts = common_copts,
     linkopts = select({
             "//tensorflow:android" : ["-llog"]
@@ -46,9 +45,8 @@ cc_binary(
 
 cc_library(
     name = "sched_client_main",
-    srcs = [
-        "sched_client_main.cc",
-    ],
+    srcs = ["sched_client_main.cc"],
+    hdrs = ["sched_logger.h"],
     copts = common_copts,
     linkopts = select({
             "//tensorflow:android" : ["-llog"]
