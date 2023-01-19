@@ -1,128 +1,154 @@
-/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-==============================================================================*/
-
-#include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <unistd.h>
-#include <errno.h>
+#include <memory.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <sys/un.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
 #include "sched_logger.h"
 
-#define  LOG_TAG    "tflite_sched_server"
-
-// Can be anything if using abstract namespace
-#define SOCKET_NAME "mySocket"
-#define BUFFER_SIZE 16
+#define MAX_EVENTS 32
+#define LOG_TAG "sched_server"
 
 namespace tflite {
 namespace benchmark {
 
-void* setupServer() {
-	int ret;
-	struct sockaddr_un server_addr;
-	int socket_fd;
-	int data_socket;
-	uint8_t buffer[BUFFER_SIZE];
-	char socket_name[108]; // 108 sun_path length max
+void initializeSocket(const char *name);
+void initializeEpoll(void);
+void processNewConnection(const epoll_event *event);
+void processExistConnection(const epoll_event *event);
+void setNonblocking(int fd);
+void terminate(void);
+void handleError(const char *msg);
+// void signalHandler(int signal);
 
-	LOGI("Start server setup");
+volatile sig_atomic_t canLoop = 1;
 
-	// AF_UNIX for domain unix IPC and SOCK_STREAM since it works for the example
-	socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (socket_fd < 0) {
-		LOGE("socket: %s", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	LOGI("Socket made");
+int epfd = -1;
+epoll_event endpoint = { 0 };
+epoll_event events[MAX_EVENTS];
 
-	// NDK needs abstract namespace by leading with '\0'
-	// Ya I was like WTF! too... http://www.toptip.ca/2013/01/unix-domain-socket-with-abstract-socket.html?m=1
-	// Note you don't need to unlink() the socket then
-	memcpy(&socket_name[0], "\0", 1);
-	strcpy(&socket_name[1], SOCKET_NAME);
+int udsfd = -1;
+sockaddr_un addr = { 0 };
 
-	// clear for safty
-	memset(&server_addr, 0, sizeof(struct sockaddr_un));
-	server_addr.sun_family = AF_UNIX; // Unix Domain instead of AF_INET IP domain
-	strncpy(server_addr.sun_path, socket_name, sizeof(server_addr.sun_path) - 1); // 108 char max
+// 新規接続を処理
+void processNewConnection(const epoll_event *event) {
+    socklen_t size = sizeof(sockaddr_un);
+    sockaddr_un client = { 0 };
+    int clfd = accept(udsfd, (sockaddr*)&client, &size);
+    if (clfd < 0) handleError("accept");
 
-	ret = bind(socket_fd, (const struct sockaddr *) &server_addr, sizeof(struct sockaddr_un));
-	if (ret < 0) {
-		LOGE("bind: %s", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	LOGI("Bind made");
-
-	// Open 8 back buffers for this demo
-	ret = listen(socket_fd, 8);
-	if (ret < 0) {
-		LOGE("listen: %s", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	LOGI("Socket listening for packages");
-
-	// Wait for incoming connection.
-	data_socket = accept(socket_fd, NULL, NULL);
-	if (data_socket < 0) {
-		LOGE("accept: %s", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-	LOGI("Accepted data");
-	// This is the main loop for handling connections
-	// Assuming in example connection is established only once
-	// Would be better to refactor this for robustness
-	for (;;) {
-
-		// Wait for next data packet
-		ret = read(data_socket, buffer, BUFFER_SIZE);
-		if (ret < 0) {
-			LOGE("read: %s", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-
-		LOGI("Buffer: %d", buffer[0]);
-
-		// Send back result
-		sprintf((char*)buffer, "%d", "Got message");
-		ret = write(data_socket, buffer, BUFFER_SIZE);
-		if (ret < 0) {
-			LOGE("write: %s", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-
-		// Close socket between accepts
-	}
-
-    LOGI("closing socket");
-	close(data_socket);
-	close(socket_fd);
-
-	return NULL;
+    epoll_event newcl = { 0 };
+    newcl.events = EPOLLIN;
+    newcl.data.fd = clfd;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, clfd, &newcl);
+    LOGD("Connection from 0x%08X established.\n", clfd);
 }
 
+// 既存接続を処理(メッセージ受け)
+void processExistConnection(const epoll_event *event) {
+    int length = 0;
+    epoll_event cl = { 0 };
+    int clfd = event->data.fd;
+
+    int state = read(clfd, &length, sizeof(int));
+    if (state < 0 || state != sizeof(int)) {
+        perror("read");
+        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
+        close(clfd);
+        LOGD("Connection from 0x%08X closed.\n", clfd);
+        return;
+    }
+    if (state == 0) {
+        // ソケット切れ
+        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
+        close(clfd);
+        LOGD("Connection from 0x%08X closed.\n", clfd);
+        return;
+    }
+
+    // 送る文字列は最後の\n\0込みで頼む
+    char *buffer = (char*)malloc(length);
+    read(clfd, buffer, length);
+    LOGD("0x%08X: %s", clfd, buffer);
+    free(buffer);
+}
+
+// UNIXドメインソケットの初期化
+void initializeSocket(const char *name) {
+    DEBUGGING;
+    udsfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (udsfd < 0) handleError("socket");
+
+    memset(&addr, 0, sizeof(sockaddr_un));
+    addr.sun_family = AF_LOCAL;
+    // 抽象名前空間につきsun_path[0]は\0
+    // さらにbindに渡すlengthはsun_pathの実質的な終端(\0含まない)までとする必要がある
+    strncpy(addr.sun_path + 1, name, 64);
+    int addrlen = sizeof(sa_family_t) + strlen(name) + 1;
+    if (bind(udsfd, (sockaddr*)&addr, addrlen) < 0) handleError("bind");
+    if (listen(udsfd, MAX_EVENTS) < 0) handleError("listen");
+}
+
+// epollの初期化
+void initializeEpoll(void) {
+    epfd = epoll_create(MAX_EVENTS);
+    if (epfd < 0) handleError("epoll_create");
+
+    memset(&endpoint, 0, sizeof(epoll_event));
+    endpoint.events = EPOLLIN;
+    endpoint.data.fd = udsfd;
+    epoll_ctl(epfd, EPOLL_CTL_ADD, udsfd, &endpoint);
+}
+
+// 終了処理
+void terminate(void) {
+    if (epfd >= 0) close(epfd);
+    if (udsfd >= 0) close(udsfd);
+}
+
+// エラー処理
+void handleError(const char *msg) {
+    perror(msg);
+    terminate();
+    exit(EXIT_FAILURE);
+}
+
+// 割り込み処理
+// void signalHandler(int signal) {
+//     canLoop = 0;
+// }
 int Main(int argc, char** argv) {
-  LOGW("server main");
+    LOGW("client main");
 
-  fprintf(stderr, "server main\n");
+    fprintf(stderr, "client main\n");
 
-  setupServer();
+    initializeSocket(DEFAULT_SOCKET_NAME);
+    initializeEpoll();
+    LOGD("epoll descriptor: 0x%016X\n", epfd);
+    LOGD("socket descriptor: 0x%016X\n", udsfd);
 
-  return EXIT_SUCCESS;
+    // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
+    LOGD("Polling...(Ctrl+C to exit)\n");
+    while(canLoop) {
+        int epn = epoll_wait(epfd, events, MAX_EVENTS, -1);
+        if (epn < 0) handleError("epoll_wait");
+
+        for(int i = 0; i < epn; i++) {
+            epoll_event *it = events + i;
+            if (it->data.fd == udsfd) {
+                processNewConnection(it);
+            } else {
+                processExistConnection(it);
+            }
+        }
+    }
+
+    terminate();
+    return EXIT_SUCCESS;
 }
 }  // namespace benchmark
 }  // namespace tflite

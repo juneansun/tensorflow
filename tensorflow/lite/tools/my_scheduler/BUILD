@@ -22,7 +22,7 @@ cc_library(
     hdrs = ["sched_logger.h"],
     copts = common_copts,
     linkopts = select({
-            "//tensorflow:android" : ["-llog"]
+            "//tensorflow:android" : ["-llog -static-libgcc -Wl,-static -lc"]
     }),
 )
 

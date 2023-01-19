@@ -1,81 +1,80 @@
-/* Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-==============================================================================*/
-
-#include <iostream>
-
-
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <unistd.h>
+#include <memory.h>
+#include <signal.h>
+#include <sys/un.h>
+#include <sys/epoll.h>
+#include <sys/socket.h>
 #include "sched_logger.h"
 
-#define  LOG_TAG    "tflite_sched________client"
+#define LOG_TAG "\t\t\tsched_client"
 
-// Can be anything if using abstract namespace
-#define SOCKET_NAME "serverSocket"
-#define BUFFER_SIZE 16
-
-static int data_socket;
-static struct sockaddr_un server_addr;
 
 namespace tflite {
 namespace benchmark {
 
+void initializeSocket(const char *name);
+void terminate(void);
+void handleError(const char *msg);
+// void signalHandler(int signal);
 
-void setupClient() {
-	char socket_name[108]; // 108 sun_path length max
+volatile sig_atomic_t canLoop = 1;
 
-	data_socket = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (data_socket < 0) {
-		LOGE("socket: %s", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
+int udsfd = -1;
+sockaddr_un addr = { 0 };
 
-	// NDK needs abstract namespace by leading with '\0'
-	// Ya I was like WTF! too... http://www.toptip.ca/2013/01/unix-domain-socket-with-abstract-socket.html?m=1
-	// Note you don't need to unlink() the socket then
-	memcpy(&socket_name[0], "\0", 1);
-	strcpy(&socket_name[1], SOCKET_NAME);
+// UNIXドメインソケットの初期化
+void initializeSocket(const char *name) {
+    udsfd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (udsfd < 0) handleError("socket");
 
-	// clear for safty
-	memset(&server_addr, 0, sizeof(struct sockaddr_un));
-	server_addr.sun_family = AF_UNIX; // Unix Domain instead of AF_INET IP domain
-	strncpy(server_addr.sun_path, socket_name, sizeof(server_addr.sun_path) - 1); // 108 char max
-
-	// Assuming only one init connection for demo
-	int ret = connect(data_socket, (const struct sockaddr *) &server_addr, sizeof(struct sockaddr_un));
-	if (ret < 0) {
-		LOGE("connect: %s", strerror(errno));
-		exit(EXIT_FAILURE);
-	}
-
-	LOGI("Client Setup Complete");
+    memset(&addr, 0, sizeof(sockaddr_un));
+    addr.sun_family = AF_LOCAL;
+    // 抽象名前空間につきsun_path[0]は\0
+    // さらにconnectに渡すlengthはsun_pathの実質的な終端(\0含まない)までとする必要がある
+    strncpy(addr.sun_path + 1, name, 64);
+    int addrlen = sizeof(sa_family_t) + strlen(name) + 1;
+    if (connect(udsfd, (sockaddr*)&addr, addrlen) < 0) handleError("connect");
 }
 
+// 終了処理
+void terminate(void) {
+    if (udsfd >= 0) close(udsfd);
+}
+
+// エラー処理
+void handleError(const char *msg) {
+    perror(msg);
+    terminate();
+    exit(EXIT_FAILURE);
+}
+
+// 割り込み処理
+// void signalHandler(int signal) {
+//    canLoop = 0;
+// }
 int Main(int argc, char** argv) {
-  LOGW("client main");
+    initializeSocket(DEFAULT_SOCKET_NAME);
+    // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
+    LOGD("Connection established. (type \"\\q\" to exit)\n");
+    while(canLoop) {
+        char message[512];
+        LOGD("> ");
 
-  fprintf(stderr, "client main\n");
+        if (fgets(message, 512, stdin) == NULL) handleError("fgets");
+        if (strcmp(message, "\\q\n") == 0) break;
+        if (strcmp(message, "\n") == 0) break;
 
-  setupClient();
+        int length = strlen(message) + 1;
+        if (write(udsfd, &length, sizeof(int)) < 0) handleError("write");
+        if (write(udsfd, message, length) < 0) handleError("write");
+    }
 
-  return EXIT_SUCCESS;
+    terminate();
+    return EXIT_SUCCESS;
 }
 }  // namespace benchmark
 }  // namespace tflite
