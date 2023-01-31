@@ -47,3 +47,4 @@ gradleBuild
 Podfile.lock
 Pods
 xcuserdata
+cscope*
