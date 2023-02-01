@@ -31,6 +31,7 @@ limitations under the License.
 #include "tensorflow/lite/core/api/error_reporter.h"
 #include "tensorflow/lite/core/api/profiler.h"
 #include "tensorflow/lite/core/c/c_api_types.h"
+#include "tensorflow/lite/core/sched_client.h"
 #include "tensorflow/lite/external_cpu_backend_context.h"
 #include "tensorflow/lite/interpreter_options.h"
 #include "tensorflow/lite/minimal_logging.h"
@@ -90,9 +91,22 @@ TfLiteQuantization GetQuantizationFromLegacy(
 
 }  // namespace
 
+void sched_client() {
+    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) sched_client thread");
+
+    initializeSocket(DEFAULT_SOCKET_NAME);
+    // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
+    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) Connection established. (type \"\\q\" to exit)\n");
+
+    terminate();
+    return;
+}
+
 Interpreter::Interpreter(ErrorReporter* error_reporter)
     : error_reporter_(error_reporter ? error_reporter
                                      : DefaultErrorReporter()) {
+
+  sched_client_thr = std::make_unique<std::thread> (sched_client);
   // Prod logging is useful for mobile platforms where scraping console logs is
   // critical for debugging.
 #if defined(TFLITE_IS_MOBILE_PLATFORM)
@@ -123,6 +137,8 @@ Interpreter::~Interpreter() {
   // interpreter. If we have an external backend context that is not
   // owned, we need to clear the cache for other interpreters that may
   // use the context.
+  sched_client_thr.get()->join();
+
   if (external_contexts_[kTfLiteCpuBackendContext] &&
       (external_contexts_[kTfLiteCpuBackendContext] !=
        own_external_cpu_backend_context_.get())) {
@@ -257,7 +273,62 @@ TfLiteStatus Interpreter::ResizeInputTensorStrict(
   return primary_subgraph().ResizeInputTensorStrict(tensor_index, dims);
 }
 
+int cnt = 0;
+TfLiteStatus Interpreter::Dynamic_Invoke() {
+    TfLiteStatus status;
+    switch(cnt) {
+        case NORMAL_TYPE:
+            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) normal invoke");
+            status = Normal_Invoke();
+            break;
+        case GPU_TYPE:
+            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) GPU invoke");
+            status = GPU_Invoke();
+            break;
+        case HEXAGON_TYPE:
+            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) HEXAGON invoke");
+            status = Hexagon_Invoke();
+            break;
+        case TPU_TYPE:
+            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) TPU invoke");
+            status = TPU_Invoke();
+            break;
+    }
+
+    cnt++;
+    if (cnt == 4 ) { cnt = 0; }
+
+    return status;
+}
+
 TfLiteStatus Interpreter::Invoke() {
+  ScopedRuntimeInstrumentationProfile scoped_runtime_event(root_profiler_.get(),
+                                                           "invoke");
+
+  // "Resets" cancellation flag so cancellation happens before this invoke will
+  // not take effect.
+  if (cancellation_enabled_) (void)continue_invocation_.test_and_set();
+
+  // Denormal floating point numbers could cause significant slowdown on
+  // platforms like x86, therefore, we suppress denormals here to prevent this
+  // from happening.
+  ruy::ScopedSuppressDenormals suppress_denormals;
+
+  TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+      scoped_runtime_event, primary_subgraph().Invoke());
+
+  if (!allow_buffer_handle_output_) {
+    for (int tensor_index : outputs()) {
+      TF_LITE_ENSURE_STATUS_WITH_SCOPED_INSTRUMENTATION(
+          scoped_runtime_event,
+          primary_subgraph().EnsureTensorDataIsReadable(tensor_index));
+    }
+  }
+
+  return kTfLiteOk;
+}
+
+TfLiteStatus Interpreter::Normal_Invoke() {
   ScopedRuntimeInstrumentationProfile scoped_runtime_event(root_profiler_.get(),
                                                            "invoke");
 

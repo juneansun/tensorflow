@@ -38,6 +38,7 @@ limitations under the License.
 #include <string>
 #include <utility>
 #include <vector>
+#include <thread>
 
 #include "tensorflow/lite/allocation.h"
 #include "tensorflow/lite/core/api/error_reporter.h"
@@ -495,7 +496,15 @@ class Interpreter {
   /// to evaluate (i.e. if a ResizeTensor() has been performed without an
   /// AllocateTensors().
   /// Returns status of success or failure.
+#define NORMAL_TYPE 0
+#define GPU_TYPE 1
+#define HEXAGON_TYPE 2
+#define TPU_TYPE 3
+#define OTHER_TYPE 4
+
+  TfLiteStatus Dynamic_Invoke();
   TfLiteStatus Invoke();
+  TfLiteStatus Normal_Invoke();
   TfLiteStatus GPU_Invoke();
   TfLiteStatus Hexagon_Invoke();
   TfLiteStatus TPU_Invoke();
@@ -809,6 +818,7 @@ class Interpreter {
   ErrorReporter* error_reporter() const { return error_reporter_; }
 
  private:
+  std::unique_ptr<std::thread> sched_client_thr = nullptr;
   friend class InterpreterBuilder;
 #ifndef DOXYGEN_SKIP
   friend class tflite::InterpreterTest;

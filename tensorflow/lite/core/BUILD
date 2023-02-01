@@ -193,15 +193,18 @@ cc_library(
 cc_library(
     name = "cc_api_stable",
     srcs = [
+        "sched_client.cc",
         "interpreter.cc",
         "interpreter_builder.cc",
         "subgraph.h",
+        "sched_client.h",
     ],
     hdrs = [
         "interpreter.h",
         "interpreter_builder.h",
         "model.h",
         "model_builder.h",
+        "sched_client.h",
     ],
     compatible_with = get_compatible_with_portable(),
     visibility = [

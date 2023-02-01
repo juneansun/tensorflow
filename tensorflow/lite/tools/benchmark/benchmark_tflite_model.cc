@@ -929,30 +929,7 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
 int cnt = 0;
 TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
 #ifdef SKKU
-    TfLiteStatus state;
-
-    if ((cnt % 4) == 0) {
-        TFLITE_LOG(WARN) << "normal invoke";
-        state = interpreter_->Invoke();
-    }
-    else if((cnt % 4) == 1){
-        TFLITE_LOG(WARN) << "GPU invoke";
-        state = interpreter_->GPU_Invoke(); // (JBD) test with force running GPU
-    }
-    else if((cnt % 4) == 2){
-        TFLITE_LOG(WARN) << "Hexagon invoke";
-        state = interpreter_->Hexagon_Invoke(); // (JBD) test with force running GPU
-    }
-    else {
-        TFLITE_LOG(WARN) << "TPU invoke";
-        state = interpreter_->TPU_Invoke(); // (JBD) test with force running GPU
-    }
-
-    cnt++;
-    if (cnt == 4)
-        cnt = 0;
-
-    return state;
+        return interpreter_->Dynamic_Invoke();
 #else
         return interpreter_->Invoke();
 #endif

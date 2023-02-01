@@ -122,7 +122,7 @@ void handleError(const char *msg) {
 //     canLoop = 0;
 // }
 int Main(int argc, char** argv) {
-    LOGW("client main");
+    LOGW("server main");
 
     fprintf(stderr, "client main\n");
 
