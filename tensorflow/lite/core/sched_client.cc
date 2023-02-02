@@ -18,33 +18,47 @@ volatile sig_atomic_t canLoop = 1;
 int udsfd = -1;
 sockaddr_un addr = { 0 };
 
-// UNIXドメインソケットの初期化
+// init UNIX socket
 void initializeSocket(const char *name) {
     udsfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (udsfd < 0) handleError("socket");
 
     memset(&addr, 0, sizeof(sockaddr_un));
     addr.sun_family = AF_LOCAL;
-    // 抽象名前空間につきsun_path[0]は\0
-    // さらにconnectに渡すlengthはsun_pathの実質的な終端(\0含まない)までとする必要がある
     strncpy(addr.sun_path + 1, name, 64);
     int addrlen = sizeof(sa_family_t) + strlen(name) + 1;
     if (connect(udsfd, (sockaddr*)&addr, addrlen) < 0) handleError("connect");
 }
 
-// 終了処理
 void terminate(void) {
     if (udsfd >= 0) close(udsfd);
 }
 
-// エラー処理
+void write_data(int data) {
+    if (write(udsfd, &data, sizeof(int)) < 0) {
+        handleError("write");
+    }
+}
+
+int read_data() {
+    int data;
+    int state = read(udsfd, &data, sizeof(int));
+    if (state < 0 || state != sizeof(int)) {
+        handleError("read");
+    }
+    if (state == 0) {
+        handleError("sock broken");
+    }
+
+    return data;
+}
+
 void handleError(const char *msg) {
     perror(msg);
     terminate();
     exit(EXIT_FAILURE);
 }
 
-// 割り込み処理
 // void signalHandler(int signal) {
 //    canLoop = 0;
 // }

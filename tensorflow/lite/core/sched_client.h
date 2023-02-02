@@ -12,3 +12,5 @@
 void initializeSocket(const char *name);
 void terminate(void);
 void handleError(const char *msg);
+int  read_data();
+void write_data(int data);

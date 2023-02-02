@@ -17,6 +17,7 @@ limitations under the License.
 
 #include <stddef.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -92,11 +93,28 @@ TfLiteQuantization GetQuantizationFromLegacy(
 }  // namespace
 
 void sched_client() {
-    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) sched_client thread");
+    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client thread");
 
     initializeSocket(DEFAULT_SOCKET_NAME);
     // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
-    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) Connection established. (type \"\\q\" to exit)\n");
+    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client connection established. (type \"\\q\" to exit)\n");
+
+    terminate();
+    return;
+}
+
+void initSchedClient() {
+    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client");
+
+    initializeSocket(DEFAULT_SOCKET_NAME);
+    // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
+    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client connection established. (type \"\\q\" to exit)\n");
+
+    return;
+}
+
+void terminateSchedClient() {
+    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client terminate");
 
     terminate();
     return;
@@ -106,7 +124,9 @@ Interpreter::Interpreter(ErrorReporter* error_reporter)
     : error_reporter_(error_reporter ? error_reporter
                                      : DefaultErrorReporter()) {
 
-  sched_client_thr = std::make_unique<std::thread> (sched_client);
+  // sched_client_thr = std::make_unique<std::thread> (sched_client);
+  initSchedClient();
+
   // Prod logging is useful for mobile platforms where scraping console logs is
   // critical for debugging.
 #if defined(TFLITE_IS_MOBILE_PLATFORM)
@@ -137,7 +157,9 @@ Interpreter::~Interpreter() {
   // interpreter. If we have an external backend context that is not
   // owned, we need to clear the cache for other interpreters that may
   // use the context.
-  sched_client_thr.get()->join();
+
+  //sched_client_thr.get()->join();
+  terminateSchedClient();
 
   if (external_contexts_[kTfLiteCpuBackendContext] &&
       (external_contexts_[kTfLiteCpuBackendContext] !=
@@ -276,7 +298,15 @@ TfLiteStatus Interpreter::ResizeInputTensorStrict(
 int cnt = 0;
 TfLiteStatus Interpreter::Dynamic_Invoke() {
     TfLiteStatus status;
-    switch(cnt) {
+
+    int pid = getpid();
+    write_data(pid);
+
+    int type;
+    type = read_data();
+
+    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) read data: %d", type);
+    switch(type) {
         case NORMAL_TYPE:
             TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) normal invoke");
             status = Normal_Invoke();
@@ -294,9 +324,6 @@ TfLiteStatus Interpreter::Dynamic_Invoke() {
             status = TPU_Invoke();
             break;
     }
-
-    cnt++;
-    if (cnt == 4 ) { cnt = 0; }
 
     return status;
 }

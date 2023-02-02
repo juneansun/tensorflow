@@ -34,7 +34,6 @@ epoll_event events[MAX_EVENTS];
 int udsfd = -1;
 sockaddr_un addr = { 0 };
 
-// 新規接続を処理
 void processNewConnection(const epoll_event *event) {
     socklen_t size = sizeof(sockaddr_un);
     sockaddr_un client = { 0 };
@@ -48,7 +47,38 @@ void processNewConnection(const epoll_event *event) {
     LOGD("Connection from 0x%08X established.\n", clfd);
 }
 
-// 既存接続を処理(メッセージ受け)
+int type = 0;
+void processSchedConnection(const epoll_event *event) {
+    int pid = 0;
+    epoll_event cl = { 0 };
+    int clfd = event->data.fd;
+
+    int state = read(clfd, &pid, sizeof(int));
+    if (state < 0 || state != sizeof(int)) {
+        perror("read");
+        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
+        close(clfd);
+        LOGD("Connection from 0x%08X closed.\n", clfd);
+        return;
+    }
+    if (state == 0) {
+        // socket is broken
+        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
+        close(clfd);
+        LOGD("Connection from 0x%08X closed.\n", clfd);
+        return;
+    }
+
+    LOGD("client[%d]: delegate[%d]", pid, type);
+    write(clfd, &type, sizeof(int));
+    type++;
+
+    if (type == 4)
+        type = 0;
+
+    return;
+}
+
 void processExistConnection(const epoll_event *event) {
     int length = 0;
     epoll_event cl = { 0 };
@@ -63,21 +93,19 @@ void processExistConnection(const epoll_event *event) {
         return;
     }
     if (state == 0) {
-        // ソケット切れ
+        // socket is broken
         epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
         close(clfd);
         LOGD("Connection from 0x%08X closed.\n", clfd);
         return;
     }
 
-    // 送る文字列は最後の\n\0込みで頼む
     char *buffer = (char*)malloc(length);
     read(clfd, buffer, length);
     LOGD("0x%08X: %s", clfd, buffer);
     free(buffer);
 }
 
-// UNIXドメインソケットの初期化
 void initializeSocket(const char *name) {
     DEBUGGING;
     udsfd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -85,15 +113,12 @@ void initializeSocket(const char *name) {
 
     memset(&addr, 0, sizeof(sockaddr_un));
     addr.sun_family = AF_LOCAL;
-    // 抽象名前空間につきsun_path[0]は\0
-    // さらにbindに渡すlengthはsun_pathの実質的な終端(\0含まない)までとする必要がある
     strncpy(addr.sun_path + 1, name, 64);
     int addrlen = sizeof(sa_family_t) + strlen(name) + 1;
     if (bind(udsfd, (sockaddr*)&addr, addrlen) < 0) handleError("bind");
     if (listen(udsfd, MAX_EVENTS) < 0) handleError("listen");
 }
 
-// epollの初期化
 void initializeEpoll(void) {
     epfd = epoll_create(MAX_EVENTS);
     if (epfd < 0) handleError("epoll_create");
@@ -104,27 +129,24 @@ void initializeEpoll(void) {
     epoll_ctl(epfd, EPOLL_CTL_ADD, udsfd, &endpoint);
 }
 
-// 終了処理
 void terminate(void) {
     if (epfd >= 0) close(epfd);
     if (udsfd >= 0) close(udsfd);
 }
 
-// エラー処理
 void handleError(const char *msg) {
     perror(msg);
     terminate();
     exit(EXIT_FAILURE);
 }
 
-// 割り込み処理
 // void signalHandler(int signal) {
 //     canLoop = 0;
 // }
 int Main(int argc, char** argv) {
     LOGW("server main");
 
-    fprintf(stderr, "client main\n");
+    fprintf(stderr, "server main\n");
 
     initializeSocket(DEFAULT_SOCKET_NAME);
     initializeEpoll();
@@ -142,7 +164,8 @@ int Main(int argc, char** argv) {
             if (it->data.fd == udsfd) {
                 processNewConnection(it);
             } else {
-                processExistConnection(it);
+                // processExistConnection(it);
+                processSchedConnection(it);
             }
         }
     }
