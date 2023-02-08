@@ -47,7 +47,7 @@ void processNewConnection(const epoll_event *event) {
     LOGD("Connection from 0x%08X established.\n", clfd);
 }
 
-int type = 0;
+int type = 1;
 void processSchedConnection(const epoll_event *event) {
     int pid = 0;
     epoll_event cl = { 0 };
@@ -69,12 +69,12 @@ void processSchedConnection(const epoll_event *event) {
         return;
     }
 
-    LOGD("client[%d]: delegate[%d]", pid, type);
+    LOGD("(JBD) client[%3d]: delegate[%2d]", clfd, type);
     write(clfd, &type, sizeof(int));
     type++;
 
     if (type == 4)
-        type = 0;
+        type = 1;
 
     return;
 }

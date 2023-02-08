@@ -1145,8 +1145,8 @@ TfLiteStatus Subgraph::OpInvoke(const TfLiteRegistration& op_reg,
         reinterpret_cast<TfLiteOpaqueNode*>(node));
   }
   if (op_reg.invoke == nullptr) return kTfLiteError;
-  TFLITE_LOG(tflite::TFLITE_LOG_WARNING, "(JBD) %s:%s\t\t\t\top_reg.invoke: %p",
-          __FILE__, __func__, op_reg.invoke);
+  // TFLITE_LOG(tflite::TFLITE_LOG_WARNING, "(JBD) %s:%s pid[%d]------------->op_reg.invoke: %p",
+  //        __FILE__, __func__, getpid(), op_reg.invoke);
   return op_reg.invoke(&context_, node);
 }
 
