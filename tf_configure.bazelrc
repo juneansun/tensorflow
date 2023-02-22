@@ -1,0 +1,16 @@
+build --action_env PYTHON_BIN_PATH="/home/junbong/anaconda3/bin/python3"
+build --action_env PYTHON_LIB_PATH="/home/junbong/anaconda3/lib/python3.9/site-packages"
+build --python_path="/home/junbong/anaconda3/bin/python3"
+build:opt --copt=-Wno-sign-compare
+build:opt --host_copt=-Wno-sign-compare
+build --action_env ANDROID_NDK_HOME="/home/junbong/Android/Sdk/ndk/19.2.5345600"
+build --action_env ANDROID_NDK_API_LEVEL="19"
+build --action_env ANDROID_BUILD_TOOLS_VERSION="33.0.0"
+build --action_env ANDROID_SDK_API_LEVEL="33"
+build --action_env ANDROID_SDK_HOME="/home/junbong/Android/Sdk"
+test --flaky_test_attempts=3
+test --test_size_filters=small,medium
+test:v1 --test_tag_filters=-benchmark-test,-no_oss,-gpu,-oss_serial
+test:v1 --build_tag_filters=-benchmark-test,-no_oss,-gpu
+test:v2 --test_tag_filters=-benchmark-test,-no_oss,-gpu,-oss_serial,-v1only
+test:v2 --build_tag_filters=-benchmark-test,-no_oss,-gpu,-v1only
