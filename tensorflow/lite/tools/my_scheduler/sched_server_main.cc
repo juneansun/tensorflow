@@ -8,6 +8,12 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
+
+#include <queue>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 #include "sched_logger.h"
 
 #define MAX_EVENTS 32
@@ -23,16 +29,99 @@ void processExistConnection(const epoll_event *event);
 void setNonblocking(int fd);
 void terminate(void);
 void handleError(const char *msg);
-// void signalHandler(int signal);
 
-volatile sig_atomic_t canLoop = 1;
+static int epfd = -1;
+static epoll_event endpoint = { 0, };
+static epoll_event events[MAX_EVENTS];
 
-int epfd = -1;
-epoll_event endpoint = { 0 };
-epoll_event events[MAX_EVENTS];
+static int udsfd = -1;
+static sockaddr_un addr = { 0 };
 
-int udsfd = -1;
-sockaddr_un addr = { 0 };
+static std::atomic<int> type(0);
+static std::atomic<int> running(1);
+
+static std::mutex g_m_loop;
+static std::mutex g_m_message;
+static std::condition_variable cv;
+static std::queue<int>message_queue;
+
+void push_message(const epoll_event* event) {
+    LOGD("(JBD) %s:%d, entered <<<<< push_message", __func__, __LINE__);
+    std::lock_guard<std::mutex> guard(g_m_message);
+
+    int pid = 0;
+    epoll_event cl = { 0 };
+    int clfd = event->data.fd;
+
+    int state = read(clfd, &pid, sizeof(int));
+    if (state < 0 || state != sizeof(int)) {
+        perror("read");
+        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
+        close(clfd);
+        LOGD("Connection from 0x%08X closed.\n", clfd);
+        return;
+    }
+    if (state == 0) {
+        // socket is broken
+        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
+        close(clfd);
+        LOGD("Connection from 0x%08X closed.\n", clfd);
+        return;
+    }
+
+    LOGD("(JBD) %s:%d, push message!!", __func__, __LINE__);
+    message_queue.push(clfd);
+
+    LOGD("(JBD) %s:%d, notify message is pushed", __func__, __LINE__);
+    cv.notify_one();
+    LOGD("(JBD) %s:%d, leave >>>>>> push_message", __func__, __LINE__);
+
+    return;
+}
+
+int pop_message() {
+    LOGD("(JBD) %s:%d, entered pop_message", __func__, __LINE__);
+    std::lock_guard<std::mutex> guard(g_m_message);
+
+    if (!message_queue.empty()) {
+        int msg = message_queue.front();
+        LOGD("(JBD) %s:%d, pop message!!", __func__, __LINE__);
+        message_queue.pop();
+        return msg;
+    } else {
+        LOGD("(JBD) %s:%d, queue is empty", __func__, __LINE__);
+        return -1;
+    }
+}
+
+void handleMessage() {
+
+    // pop message
+    while(running) {
+        std::unique_lock lk(g_m_loop);
+        LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, wait for push notification", __func__, __LINE__);
+        cv.wait(lk);
+
+        int clfd = pop_message();
+        if (clfd < 0) {
+            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message popped fd[%d]", __func__, __LINE__, clfd);
+            lk.unlock();
+            continue;
+        } else {
+            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message not poped", __func__, __LINE__);
+        }
+
+        LOGD("(JBD) \t\t\t\t\t\t\tclient[%3d]: delegate[%2d]", clfd, (int) std::move(type));
+        write(clfd, &type, sizeof(int));
+        type++;
+
+        if (type == 4)
+            type = 1;
+
+        lk.unlock();
+    }
+    return;
+}
 
 void processNewConnection(const epoll_event *event) {
     socklen_t size = sizeof(sockaddr_un);
@@ -47,6 +136,7 @@ void processNewConnection(const epoll_event *event) {
     LOGD("Connection from 0x%08X established.\n", clfd);
 }
 
+#if 0
 int type = 1;
 void processSchedConnection(const epoll_event *event) {
     int pid = 0;
@@ -78,33 +168,7 @@ void processSchedConnection(const epoll_event *event) {
 
     return;
 }
-
-void processExistConnection(const epoll_event *event) {
-    int length = 0;
-    epoll_event cl = { 0 };
-    int clfd = event->data.fd;
-
-    int state = read(clfd, &length, sizeof(int));
-    if (state < 0 || state != sizeof(int)) {
-        perror("read");
-        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
-        close(clfd);
-        LOGD("Connection from 0x%08X closed.\n", clfd);
-        return;
-    }
-    if (state == 0) {
-        // socket is broken
-        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
-        close(clfd);
-        LOGD("Connection from 0x%08X closed.\n", clfd);
-        return;
-    }
-
-    char *buffer = (char*)malloc(length);
-    read(clfd, buffer, length);
-    LOGD("0x%08X: %s", clfd, buffer);
-    free(buffer);
-}
+#endif
 
 void initializeSocket(const char *name) {
     DEBUGGING;
@@ -141,7 +205,6 @@ void handleError(const char *msg) {
 }
 
 // void signalHandler(int signal) {
-//     canLoop = 0;
 // }
 int Main(int argc, char** argv) {
     LOGW("server main");
@@ -155,7 +218,10 @@ int Main(int argc, char** argv) {
 
     // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
     LOGD("Polling...(Ctrl+C to exit)\n");
-    while(canLoop) {
+
+    std::thread t1(handleMessage);
+
+    while(1) {
         int epn = epoll_wait(epfd, events, MAX_EVENTS, -1);
         if (epn < 0) handleError("epoll_wait");
 
@@ -164,13 +230,15 @@ int Main(int argc, char** argv) {
             if (it->data.fd == udsfd) {
                 processNewConnection(it);
             } else {
-                // processExistConnection(it);
-                processSchedConnection(it);
+                // processSchedConnection(it);
+                // push to message queue
+                push_message(it);
             }
         }
     }
 
     terminate();
+    t1.join();
     return EXIT_SUCCESS;
 }
 }  // namespace benchmark
