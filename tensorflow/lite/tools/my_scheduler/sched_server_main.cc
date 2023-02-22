@@ -38,12 +38,14 @@ static int udsfd = -1;
 static sockaddr_un addr = { 0 };
 
 static std::atomic<int> type(0);
-static std::atomic<int> running(1);
+static std::atomic<int> running(0);
 
 static std::mutex g_m_loop;
 static std::mutex g_m_message;
 static std::condition_variable cv;
 static std::queue<int>message_queue;
+
+static int check_client[4097] = { 0, };
 
 void push_message(const epoll_event* event) {
     LOGD("(JBD) %s:%d, entered <<<<< push_message", __func__, __LINE__);
@@ -58,22 +60,35 @@ void push_message(const epoll_event* event) {
         perror("read");
         epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
         close(clfd);
-        LOGD("Connection from 0x%08X closed.\n", clfd);
+        LOGD("(JBD) Connection from %3d closed.\n", clfd);
+        running--;
+        LOGD("(JBD) #of client: %d", (int) std::move(running));
         return;
     }
     if (state == 0) {
         // socket is broken
         epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
         close(clfd);
-        LOGD("Connection from 0x%08X closed.\n", clfd);
+        LOGD("(JBD) Connection from %3d closed.\n", clfd);
+        running--;
+        LOGD("(JBD) #of client: %d", (int) std::move(running));
         return;
     }
 
     LOGD("(JBD) %s:%d, push message!!", __func__, __LINE__);
     message_queue.push(clfd);
 
-    LOGD("(JBD) %s:%d, notify message is pushed", __func__, __LINE__);
-    cv.notify_one();
+
+    if (check_client[clfd] == 0) {
+        check_client[clfd] = 1;
+        running++;
+        LOGD("(JBD) #of client: %d", (int) std::move(running));
+    }
+
+    if (running >= 10) { // wait until all 4 client send message
+        cv.notify_one();
+    }
+
     LOGD("(JBD) %s:%d, leave >>>>>> push_message", __func__, __LINE__);
 
     return;
@@ -96,29 +111,41 @@ int pop_message() {
 
 void handleMessage() {
 
+    std::unique_lock lk(g_m_loop);
     // pop message
-    while(running) {
-        std::unique_lock lk(g_m_loop);
-        LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, wait for push notification", __func__, __LINE__);
-        cv.wait(lk);
-
+    while(true) {
         int clfd = pop_message();
+
         if (clfd < 0) {
-            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message popped fd[%d]", __func__, __LINE__, clfd);
-            lk.unlock();
+            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message NOT popped fd", __func__, __LINE__, clfd);
+            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, wait for push notification", __func__, __LINE__);
+
+            if(running == 0) {
+                {
+                    std::lock_guard<std::mutex> guard(g_m_message);
+
+                    LOGD("(JBD) ---- #of client: %d ----", (int) std::move(running));
+                    for (int i = 0 ; i < 4097; i++) {
+                        check_client[i] = 0;
+                    }
+                }
+                LOGD("(JBD) wait for notification");
+                cv.wait(lk); // wait until new message arrive
+            }
+
             continue;
         } else {
-            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message not poped", __func__, __LINE__);
+            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message poped", __func__, __LINE__);
         }
 
         LOGD("(JBD) \t\t\t\t\t\t\tclient[%3d]: delegate[%2d]", clfd, (int) std::move(type));
+        type = 2;
         write(clfd, &type, sizeof(int));
         type++;
 
         if (type == 4)
             type = 1;
 
-        lk.unlock();
     }
     return;
 }
