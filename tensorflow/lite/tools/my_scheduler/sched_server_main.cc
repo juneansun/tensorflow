@@ -47,6 +47,8 @@ static std::queue<int>message_queue;
 
 static int check_client[4097] = { 0, };
 
+static int notified = 0;
+
 // XXX: code flag for experiment
 #define HOW_MANY_TO_START_AT_ONCE 4
 
@@ -97,6 +99,7 @@ void push_message(const epoll_event* event) {
 
     if (running >= HOW_MANY_TO_START_AT_ONCE) {
         cv.notify_one();
+        notified = 1;
     }
 
     LOGD("(JBD) %s:%d, leave >>>>>> push_message", __func__, __LINE__);
@@ -140,6 +143,7 @@ void handleMessage() {
                     }
                 }
                 LOGD("(JBD) wait for notification");
+                notified = 0;
                 cv.wait(lk); // wait until new message arrive
             }
 
