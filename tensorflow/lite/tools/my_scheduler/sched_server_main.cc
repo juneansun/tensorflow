@@ -47,6 +47,16 @@ static std::queue<int>message_queue;
 
 static int check_client[4097] = { 0, };
 
+// XXX: code flag for experiment
+#define HOW_MANY_TO_START_AT_ONCE 4
+
+// 0: CPU
+// 1: GPU
+// 2: Hexagon
+// 3: TPU
+//#define STATIC_PROCESSOR 3
+#undef STATIC_PROCESSOR
+
 void push_message(const epoll_event* event) {
     LOGD("(JBD) %s:%d, entered <<<<< push_message", __func__, __LINE__);
     std::lock_guard<std::mutex> guard(g_m_message);
@@ -85,7 +95,7 @@ void push_message(const epoll_event* event) {
         LOGD("(JBD) #of client: %d", (int) std::move(running));
     }
 
-    if (running >= 10) { // wait until all 4 client send message
+    if (running >= HOW_MANY_TO_START_AT_ONCE) {
         cv.notify_one();
     }
 
@@ -139,9 +149,12 @@ void handleMessage() {
         }
 
         LOGD("(JBD) \t\t\t\t\t\t\tclient[%3d]: delegate[%2d]", clfd, (int) std::move(type));
-        type = 2;
         write(clfd, &type, sizeof(int));
+#ifdef STATIC_PROCESSOR
+        type = STATIC_PROCESSOR;
+#else
         type++;
+#endif
 
         if (type == 4)
             type = 1;
