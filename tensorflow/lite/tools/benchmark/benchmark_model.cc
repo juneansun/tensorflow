@@ -228,7 +228,7 @@ Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
     listeners_.OnSingleRunStart(run_type);
     int64_t start_us = profiling::time::NowMicros();
     TfLiteStatus status = RunImpl();
-    int64_t end_us = profiling::time::NowMicros();
+    int64_t end_us = profiling::time::NowMicros(); // (JBD) end time of inference??
     listeners_.OnSingleRunEnd();
 
     run_stats.UpdateStat(end_us - start_us);

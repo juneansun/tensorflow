@@ -50,7 +50,7 @@ static int check_client[4097] = { 0, };
 static int notified = 0;
 
 // XXX: code flag for experiment
-#define HOW_MANY_TO_START_AT_ONCE 4
+#define HOW_MANY_TO_START_AT_ONCE 1
 
 // 0: CPU
 // 1: GPU
