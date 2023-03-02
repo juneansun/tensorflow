@@ -84,7 +84,7 @@ void BenchmarkLoggingListener::OnBenchmarkEnd(const BenchmarkResults& results) {
   auto overall_mem_usage = results.overall_mem_usage();
   TFLITE_LOG(INFO) << "Inference timings in us: "
                    << "Init: " << init_us << ", "
-                   << "First inference: " << warmup_us.first() << ", "
+                   << "First inference: " << inference_us.first() << ", "
                    << "Warmup (avg): " << warmup_us.avg() << ", "
                    << "Inference (avg): " << inference_us.avg();
 
@@ -204,6 +204,7 @@ TfLiteStatus BenchmarkModel::PrepareInputData() { return kTfLiteOk; }
 
 TfLiteStatus BenchmarkModel::ResetInputsAndOutputs() { return kTfLiteOk; }
 
+int avg_ten_count;
 Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
                                   float max_secs, RunType run_type,
                                   TfLiteStatus* invoke_status) {
@@ -231,7 +232,9 @@ Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
     int64_t end_us = profiling::time::NowMicros(); // (JBD) end time of inference??
     listeners_.OnSingleRunEnd();
 
-    run_stats.UpdateStat(end_us - start_us);
+    if ((avg_ten_count-- > 0) && (avg_ten_count <= 10))
+        run_stats.UpdateStat(end_us - start_us);
+
     if (run_frequency > 0) {
       inter_run_sleep_time =
           next_run_finish_time - profiling::time::NowMicros() * 1e-6;
@@ -312,6 +315,7 @@ TfLiteStatus BenchmarkModel::Run() {
   }
 
   listeners_.OnBenchmarkStart(params_);
+  avg_ten_count = 20;
   Stat<int64_t> warmup_time_us =
       Run(params_.Get<int32_t>("warmup_runs"),
           params_.Get<float>("warmup_min_secs"), params_.Get<float>("max_secs"),
@@ -320,6 +324,7 @@ TfLiteStatus BenchmarkModel::Run() {
     return status;
   }
 
+  avg_ten_count = 20;
   Stat<int64_t> inference_time_us =
       Run(params_.Get<int32_t>("num_runs"), params_.Get<float>("min_secs"),
           params_.Get<float>("max_secs"), REGULAR, &status);
