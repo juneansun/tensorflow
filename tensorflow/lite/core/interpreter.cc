@@ -296,6 +296,7 @@ TfLiteStatus Interpreter::ResizeInputTensorStrict(
 }
 
 int cnt = 0;
+#define LOG_TAG "tflite"
 TfLiteStatus Interpreter::Dynamic_Invoke() {
     TfLiteStatus status;
 
@@ -305,22 +306,21 @@ TfLiteStatus Interpreter::Dynamic_Invoke() {
     int type;
     type = read_data();
 
-    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) read data: %d", type);
     switch(type) {
         case NORMAL_TYPE:
-            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) normal invoke");
+            LOGI("(JBD) normal invoke");
             status = Normal_Invoke();
             break;
         case GPU_TYPE:
-            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) GPU invoke");
+            LOGI("(JBD) GPU invoke");
             status = GPU_Invoke();
             break;
         case HEXAGON_TYPE:
-            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) HEXAGON invoke");
+            LOGI("(JBD) HEXAGON invoke");
             status = Hexagon_Invoke();
             break;
         case TPU_TYPE:
-            TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) TPU invoke");
+            LOGI("(JBD) TPU invoke");
             status = TPU_Invoke();
             break;
     }

@@ -38,7 +38,7 @@ static int udsfd = -1;
 static sockaddr_un addr = { 0 };
 
 static std::atomic<int> type(0);
-static std::atomic<int> running(0);
+static std::atomic<int> num_client(0);
 
 static std::mutex g_m_loop;
 static std::mutex g_m_message;
@@ -47,7 +47,7 @@ static std::queue<int>message_queue;
 
 static int check_client[4097] = { 0, };
 
-static int notified = 0;
+static bool notify_flag = false;
 
 // XXX: code flag for experiment
 #define HOW_MANY_TO_START_AT_ONCE 1
@@ -58,6 +58,16 @@ static int notified = 0;
 // 3: TPU
 //#define STATIC_PROCESSOR 3
 #undef STATIC_PROCESSOR
+
+
+void resetNumClient() {
+    LOGD("(JBD) ---- #of client: %d ----", (int) std::move(num_client));
+    for (int i = 0 ; i < 4097; i++) {
+        check_client[i] = 0;
+    }
+    LOGD("(JBD) disable notification until num_client is full-filled");
+    notify_flag = false;
+}
 
 void push_message(const epoll_event* event) {
     LOGD("(JBD) %s:%d, entered <<<<< push_message", __func__, __LINE__);
@@ -73,8 +83,11 @@ void push_message(const epoll_event* event) {
         epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
         close(clfd);
         LOGD("(JBD) Connection from %3d closed.\n", clfd);
-        running--;
-        LOGD("(JBD) #of client: %d", (int) std::move(running));
+        num_client--;
+        LOGD("(JBD) #of client: %d", (int) std::move(num_client));
+
+        if (num_client == 0)
+            resetNumClient();
         return;
     }
     if (state == 0) {
@@ -82,8 +95,10 @@ void push_message(const epoll_event* event) {
         epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
         close(clfd);
         LOGD("(JBD) Connection from %3d closed.\n", clfd);
-        running--;
-        LOGD("(JBD) #of client: %d", (int) std::move(running));
+        num_client--;
+        LOGD("(JBD) #of client: %d", (int) std::move(num_client));
+        if (num_client == 0)
+            resetNumClient();
         return;
     }
 
@@ -93,13 +108,16 @@ void push_message(const epoll_event* event) {
 
     if (check_client[clfd] == 0) {
         check_client[clfd] = 1;
-        running++;
-        LOGD("(JBD) #of client: %d", (int) std::move(running));
+        num_client++;
+        LOGD("(JBD) #of client: %d", (int) std::move(num_client));
     }
 
-    if (running >= HOW_MANY_TO_START_AT_ONCE) {
+    if (num_client >= HOW_MANY_TO_START_AT_ONCE) {
+        notify_flag = true;
+    }
+
+    if (notify_flag) {
         cv.notify_one();
-        notified = 1;
     }
 
     LOGD("(JBD) %s:%d, leave >>>>>> push_message", __func__, __LINE__);
@@ -108,16 +126,16 @@ void push_message(const epoll_event* event) {
 }
 
 int pop_message() {
-    LOGD("(JBD) %s:%d, entered pop_message", __func__, __LINE__);
+    LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, entered pop_message", __func__, __LINE__);
     std::lock_guard<std::mutex> guard(g_m_message);
 
     if (!message_queue.empty()) {
         int msg = message_queue.front();
-        LOGD("(JBD) %s:%d, pop message!!", __func__, __LINE__);
+        LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, pop message!!", __func__, __LINE__);
         message_queue.pop();
         return msg;
     } else {
-        LOGD("(JBD) %s:%d, queue is empty", __func__, __LINE__);
+        LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, queue is empty", __func__, __LINE__);
         return -1;
     }
 }
@@ -130,29 +148,17 @@ void handleMessage() {
         int clfd = pop_message();
 
         if (clfd < 0) {
-            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message NOT popped fd", __func__, __LINE__, clfd);
-            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, wait for push notification", __func__, __LINE__);
+            LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, message NOT popped fd", __func__, __LINE__, clfd);
+            LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, wait for push notification", __func__, __LINE__);
 
-            if(running == 0) {
-                {
-                    std::lock_guard<std::mutex> guard(g_m_message);
-
-                    LOGD("(JBD) ---- #of client: %d ----", (int) std::move(running));
-                    for (int i = 0 ; i < 4097; i++) {
-                        check_client[i] = 0;
-                    }
-                }
-                LOGD("(JBD) wait for notification");
-                notified = 0;
-                cv.wait(lk); // wait until new message arrive
-            }
+            cv.wait(lk); // wait until new message arrive
 
             continue;
         } else {
-            LOGD("(JBD) \t\t\t\t\t\t\t%s:%d, message poped", __func__, __LINE__);
+            LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, message poped", __func__, __LINE__);
         }
 
-        LOGD("(JBD) \t\t\t\t\t\t\tclient[%3d]: delegate[%2d]", clfd, (int) std::move(type));
+        LOGD("\t\t\t\t\t\t\t(JBD) client[%3d]: delegate[%2d]", clfd, (int) std::move(type));
         write(clfd, &type, sizeof(int));
 #ifdef STATIC_PROCESSOR
         type = STATIC_PROCESSOR;
@@ -254,6 +260,9 @@ int Main(int argc, char** argv) {
     LOGW("server main");
 
     fprintf(stderr, "server main\n");
+
+    num_client = 0;
+    notify_flag = false;
 
     initializeSocket(DEFAULT_SOCKET_NAME);
     initializeEpoll();
