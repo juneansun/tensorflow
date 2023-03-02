@@ -325,6 +325,8 @@ TfLiteStatus Interpreter::Dynamic_Invoke() {
             break;
     }
 
+    write_data(-1);
+
     return status;
 }
 

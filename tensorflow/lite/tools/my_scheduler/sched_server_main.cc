@@ -49,15 +49,30 @@ static int check_client[4097] = { 0, };
 
 static bool notify_flag = false;
 
-// XXX: code flag for experiment
-#define HOW_MANY_TO_START_AT_ONCE 1
+static int processorPerClients[1024];
 
+static int profiles[4][10] =        {{ 85168,    99999,  99999,  99999, 99999, 99999, 99999 },
+                                { 11989,    12199,  14996,  20679, 25195, 30084, 39789 },
+                                { 3510,     5657,   8430,   11281, 16960, 19773 },
+                                { 2872,     6529,   9793,   13072, 16349, 19631, 22874, 26166 }};
+
+static int processor_apps[4] = { 0, };
+
+// XXX: code flag for experiment
+#define HOW_MANY_TO_START_AT_ONCE 4
+
+#define CPU_TYPE 0
+#define GPU_TYPE 1
+#define HEXAGON_TYPE 2
+#define TPU_TYPE 3
+#define OTHER_TYPE 4
 // 0: CPU
 // 1: GPU
 // 2: Hexagon
 // 3: TPU
-//#define STATIC_PROCESSOR 3
+// #define STATIC_PROCESSOR 0
 #undef STATIC_PROCESSOR
+//#define ROUNDROBIN
 
 
 void resetNumClient() {
@@ -102,6 +117,31 @@ void push_message(const epoll_event* event) {
         return;
     }
 
+    if (pid < 0) {
+        // Inference finished
+        int type = processorPerClients[clfd];
+
+        processor_apps[type]--;
+
+    switch(type)
+    {
+        case CPU_TYPE:
+            LOGD("CPU: count--[%d]", processor_apps[CPU_TYPE]);
+            break;
+        case GPU_TYPE:
+            LOGD("GPU: count--[%d]", processor_apps[GPU_TYPE]);
+            break;
+        case HEXAGON_TYPE:
+            LOGD("HEX: count--[%d]", processor_apps[HEXAGON_TYPE]);
+            break;
+        case TPU_TYPE:
+            LOGD("TPU: count--[%d]", processor_apps[TPU_TYPE]);
+            break;
+    }
+
+        return;
+    }
+
     LOGD("(JBD) %s:%d, push message!!", __func__, __LINE__);
     message_queue.push(clfd);
 
@@ -140,9 +180,55 @@ int pop_message() {
     }
 }
 
+int findBestProcessor() {
+
+    int candidate[4];
+    int min_value = candidate[0];
+    int min_index = 0;
+
+    std::lock_guard<std::mutex> guard(g_m_message);
+
+    candidate[0] = profiles[CPU_TYPE]       [ processor_apps[CPU_TYPE] ];
+    candidate[1] = profiles[GPU_TYPE]       [ processor_apps[GPU_TYPE] ];
+    candidate[2] = profiles[HEXAGON_TYPE]   [ processor_apps[HEXAGON_TYPE] ];
+    candidate[3] = profiles[TPU_TYPE]       [ processor_apps[TPU_TYPE]  ];
+
+    LOGD("[%d] vs [%d] vs [%d] vs [%d]",
+            candidate[0],
+            candidate[1],
+            candidate[2],
+            candidate[3]);
+
+    for (int index = 0; index < 4; index++) {
+        if (min_value > candidate[index]) {
+            min_value = candidate[index];
+            min_index = index;
+        }
+    }
+
+    processor_apps[min_index]++;
+
+    switch(min_index)
+    {
+        case CPU_TYPE:
+            LOGD("CPU: count++[%d]", processor_apps[CPU_TYPE]);
+            break;
+        case GPU_TYPE:
+            LOGD("GPU: count++[%d]", processor_apps[GPU_TYPE]);
+            break;
+        case HEXAGON_TYPE:
+            LOGD("HEX: count++[%d]", processor_apps[HEXAGON_TYPE]);
+            break;
+        case TPU_TYPE:
+            LOGD("TPU: count++[%d]", processor_apps[TPU_TYPE]);
+            break;
+    }
+    return min_index;
+}
+
 void handleMessage() {
 
-    std::unique_lock lk(g_m_loop);
+    std::unique_lock lk(g_m_loop); // this lock is for conditional variable signal wait
     // pop message
     while(true) {
         int clfd = pop_message();
@@ -159,15 +245,23 @@ void handleMessage() {
         }
 
         LOGD("\t\t\t\t\t\t\t(JBD) client[%3d]: delegate[%2d]", clfd, (int) std::move(type));
-        write(clfd, &type, sizeof(int));
+
 #ifdef STATIC_PROCESSOR
         type = STATIC_PROCESSOR;
 #else
+
+#ifdef ROUNDROBIN
         type++;
-#endif
 
         if (type == 4)
             type = 1;
+#else
+        type = findBestProcessor();
+#endif // RaR? or optimal?
+#endif // static?
+        processorPerClients[clfd] = type;
+
+        write(clfd, &type, sizeof(int));
 
     }
     return;
