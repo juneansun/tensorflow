@@ -84,6 +84,10 @@ static int processor_apps[4] = { 0, };
 // #define ROUNDROBIN
 #define GREEDY
 
+typedef struct Packet_ {
+    int pid;
+    int moddel;
+};
 
 void resetNumClient() {
     LOGD("(JBD) ---- #of client: %d ----", (int) std::move(num_client));
@@ -103,25 +107,15 @@ void push_message(const epoll_event* event) {
     int clfd = event->data.fd;
 
     int state = read(clfd, &pid, sizeof(int));
-    if (state < 0 || state != sizeof(int)) {
+    if (state <= 0 || state != sizeof(int)) {
         perror("read");
+
         epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
         close(clfd);
         LOGD("(JBD) Connection from %3d closed.\n", clfd);
         num_client--;
         LOGD("(JBD) #of client: %d", (int) std::move(num_client));
 
-        if (num_client == 0)
-            resetNumClient();
-        return;
-    }
-    if (state == 0) {
-        // socket is broken
-        epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
-        close(clfd);
-        LOGD("(JBD) Connection from %3d closed.\n", clfd);
-        num_client--;
-        LOGD("(JBD) #of client: %d", (int) std::move(num_client));
         if (num_client == 0)
             resetNumClient();
         return;
@@ -148,7 +142,7 @@ void push_message(const epoll_event* event) {
                 break;
         }
 
-        return;
+        return; // Inference finished
     }
 
     LOGD("(JBD) %s:%d, push message!!", __func__, __LINE__);
@@ -255,6 +249,9 @@ void handleMessage() {
         }
 
         LOGD("\t\t\t\t\t\t\t(JBD) client[%3d]: delegate[%2d]", clfd, (int) std::move(type));
+
+
+    // int state = read(clfd, &pid, sizeof(int));
 
 #ifdef STATIC_PROCESSOR
         type = STATIC_PROCESSOR;

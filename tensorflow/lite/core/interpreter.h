@@ -502,7 +502,7 @@ class Interpreter {
 #define TPU_TYPE 3
 #define OTHER_TYPE 4
 
-  TfLiteStatus Dynamic_Invoke();
+  TfLiteStatus Dynamic_Invoke(int model_idx);
   TfLiteStatus Invoke();
   TfLiteStatus Normal_Invoke();
   TfLiteStatus GPU_Invoke();
