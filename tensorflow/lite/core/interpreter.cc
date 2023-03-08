@@ -296,36 +296,47 @@ TfLiteStatus Interpreter::ResizeInputTensorStrict(
 }
 
 int cnt = 0;
+
+typedef struct Packet_ {
+    int pid;
+    int model;
+} PACKET;
+
 #define LOG_TAG "tflite"
-TfLiteStatus Interpreter::Dynamic_Invoke() {
+TfLiteStatus Interpreter::Dynamic_Invoke(int model_idx) {
     TfLiteStatus status;
 
-    int pid = getpid();
-    write_data(pid);
+    {   // invoke inference
+        int pid = getpid();
+        // PACKET pkt = { pid, model_idx } ;
+        write_data(sizeof(int), pid);
 
-    int type;
-    type = read_data();
+        int type;
+        type = read_data();
 
-    switch(type) {
-        case NORMAL_TYPE:
-            LOGI("(JBD) normal invoke");
-            status = Normal_Invoke();
-            break;
-        case GPU_TYPE:
-            LOGI("(JBD) GPU invoke");
-            status = GPU_Invoke();
-            break;
-        case HEXAGON_TYPE:
-            LOGI("(JBD) HEXAGON invoke");
-            status = Hexagon_Invoke();
-            break;
-        case TPU_TYPE:
-            LOGI("(JBD) TPU invoke");
-            status = TPU_Invoke();
-            break;
+        switch(type) {
+            case NORMAL_TYPE:
+                LOGI("(JBD) normal invoke");
+                status = Normal_Invoke();
+                break;
+            case GPU_TYPE:
+                LOGI("(JBD) GPU invoke");
+                status = GPU_Invoke();
+                break;
+            case HEXAGON_TYPE:
+                LOGI("(JBD) HEXAGON invoke");
+                status = Hexagon_Invoke();
+                break;
+            case TPU_TYPE:
+                LOGI("(JBD) TPU invoke");
+                status = TPU_Invoke();
+                break;
+        }
     }
 
-    write_data(-1); // this will notify server to decrease client count
+    {   // this will notify server to decrease client count
+        write_data(sizeof(int), -1);
+    }
 
     return status;
 }

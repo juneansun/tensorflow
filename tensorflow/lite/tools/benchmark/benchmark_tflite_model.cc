@@ -54,6 +54,10 @@ limitations under the License.
 #include "tensorflow/lite/tools/utils.h"
 
 #define SKKU
+#define MOBILENET       0
+#define INCEPTIONNET    1
+
+static int model_idx = -1;
 
 void RegisterSelectedOps(::tflite::MutableOpResolver* resolver);
 
@@ -893,6 +897,14 @@ TfLiteStatus BenchmarkTfLiteModel::LoadModel() {
   model_ = tflite::FlatBufferModel::BuildFromModel(
       model_loader_->GetModel()->GetModel());
   TFLITE_LOG(INFO) << "Loaded model " << fd_or_graph_path;
+
+    if (params_.Get<std::string>("graph").find("inception") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) inceptionNet";
+        model_idx = INCEPTIONNET;
+    } else if (params_.Get<std::string>("graph").find("mobile") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) mobileNet";
+        model_idx = MOBILENET;
+    }
   return kTfLiteOk;
 }
 
@@ -928,8 +940,9 @@ BenchmarkTfLiteModel::MayCreateProfilingListener() const {
 
 int cnt = 0;
 TfLiteStatus BenchmarkTfLiteModel::RunImpl() {
+
 #ifdef SKKU
-        return interpreter_->Dynamic_Invoke();
+        return interpreter_->Dynamic_Invoke(model_idx);
 #else
         return interpreter_->Invoke();
 #endif
