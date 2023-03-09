@@ -34,8 +34,8 @@ void terminate(void) {
     if (udsfd >= 0) close(udsfd);
 }
 
-void write_data(int size, int data) {
-    if (write(udsfd, &data, size) < 0) {
+void write_data(int size, void *data) {
+    if (write(udsfd, data, size) < 0) {
         handleError("write");
     }
 }

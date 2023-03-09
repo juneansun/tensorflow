@@ -43,7 +43,12 @@ static std::atomic<int> num_client(0);
 static std::mutex g_m_loop;
 static std::mutex g_m_message;
 static std::condition_variable cv;
-static std::queue<int>message_queue;
+
+typedef struct Message_ {
+    int clfd;
+    int model_idx;
+} MESSAGE;
+static std::queue<MESSAGE>message_queue;
 
 static int check_client[4097] = { 0, };
 
@@ -51,24 +56,34 @@ static bool notify_flag = false;
 
 static int processorPerClients[1024];
 
-static int InceptionProfile[4][10] = {
+static int InceptionProfile[4][10] =
+{
     { 564661,  616192,  641378,  680000,  720000,  760000 }, // CPU
     { 134514,  260589,  384482,  518373,  655177,  782517,  910000,  1040000 }, // GPU
     { 18006,   31939,   50308,   67031,   85702,   104356,  119000,  136000 }, // Hexagon
     { 24639,   42326,   60307,   80296,   100000,  120000,  140000,  160000 } // TPU
 };
 
-static int profiles[4][10] ={
-    { 85168,    99999,  99999,  99999, 99999, 99999, 99999 }, // CPU
-    { 11189,    12199,  14996,  20679, 25195, 30084, 39789 }, // GPU
-    { 3510,     5657,   8430,   11281, 16960, 19773 }, // Hexagon
-    { 2872,     6529,   9793,   13072, 16349, 19631, 22874, 26166 } // TPU
+static int profiles[2][4][10] = {
+    {   // moblieNet profile
+        { 85168,    99999,  99999,  99999, 99999, 99999, 99999 }, // CPU
+        { 11189,    12199,  14996,  20679, 25195, 30084, 39789 }, // GPU
+        { 3510,     5657,   8430,   11281, 16960, 19773 }, // Hexagon
+        { 2872,     6529,   9793,   13072, 16349, 19631, 22874, 26166 } // TPU
+    },
+    {   // inceptionNet profile
+        { 564661,  616192,  641378,  680000,  720000,  760000 }, // CPU
+        { 134514,  260589,  384482,  518373,  655177,  782517,  910000,  1040000 }, // GPU
+        { 18006,   31939,   50308,   67031,   85702,   104356,  119000,  136000 }, // Hexagon
+        { 24639,   42326,   60307,   80296,   100000,  120000,  140000,  160000 } // TPU
+    }
 };
+
 
 static int processor_apps[4] = { 0, };
 
 // XXX: code flag for experiment
-#define HOW_MANY_TO_START_AT_ONCE 1
+#define HOW_MANY_TO_START_AT_ONCE 4
 
 #define CPU_TYPE        0
 #define GPU_TYPE        1
@@ -85,123 +100,132 @@ static int processor_apps[4] = { 0, };
 #define GREEDY
 
 typedef struct Packet_ {
-    int pid;
-    int moddel;
-};
+    int request;
+    int model_idx;
+}PACKET;
 
 void resetNumClient() {
-    LOGD("(JBD) ---- #of client: %d ----", (int) std::move(num_client));
+    LOGD("-------------------------- # of client: %d --------------------------", (int) std::move(num_client));
     for (int i = 0 ; i < 4097; i++) {
         check_client[i] = 0;
     }
-    LOGD("(JBD) disable notification until num_client is full-filled");
+    LOGD("disable notification until num_client is full-filled");
     notify_flag = false;
 }
 
+#define INVOKE 0
+#define FINISH 1
 void push_message(const epoll_event* event) {
-    LOGD("(JBD) %s:%d, entered <<<<< push_message", __func__, __LINE__);
     std::lock_guard<std::mutex> guard(g_m_message);
 
-    int pid = 0;
+    PACKET pkt;
     epoll_event cl = { 0 };
     int clfd = event->data.fd;
 
-    int state = read(clfd, &pid, sizeof(int));
-    if (state <= 0 || state != sizeof(int)) {
-        perror("read");
+    int state = read(clfd, &pkt, sizeof(PACKET));
+
+    if (state <= 0 || state != sizeof(PACKET)) {
+        perror("sched_server read failed");
 
         epoll_ctl(epfd, EPOLL_CTL_DEL, clfd, &cl);
         close(clfd);
-        LOGD("(JBD) Connection from %3d closed.\n", clfd);
-        num_client--;
-        LOGD("(JBD) #of client: %d", (int) std::move(num_client));
+        if (num_client > 0)
+            num_client--;
+        LOGD("# of client--: %d", (int) std::move(num_client));
 
         if (num_client == 0)
             resetNumClient();
         return;
     }
 
-    if (pid < 0) { // client send -1 after inference finished
-        int type = processorPerClients[clfd];
 
-        processor_apps[type]--;
-
-        switch(type)
+    switch (pkt.request)
+    {
+        case FINISH:// client send -1 after inference finished
         {
-            case CPU_TYPE:
-                LOGD("CPU: count--[%d]", processor_apps[CPU_TYPE]);
-                break;
-            case GPU_TYPE:
-                LOGD("GPU: count--[%d]", processor_apps[GPU_TYPE]);
-                break;
-            case HEXAGON_TYPE:
-                LOGD("HEX: count--[%d]", processor_apps[HEXAGON_TYPE]);
-                break;
-            case TPU_TYPE:
-                LOGD("TPU: count--[%d]", processor_apps[TPU_TYPE]);
-                break;
+            processor_apps[processorPerClients[clfd]]--;
+#if 0 // DEBUG
+            switch(type)
+            {
+                case CPU_TYPE:
+                    LOGD("CPU: count--[%d]", processor_apps[CPU_TYPE]);
+                    break;
+                case GPU_TYPE:
+                    LOGD("GPU: count--[%d]", processor_apps[GPU_TYPE]);
+                    break;
+                case HEXAGON_TYPE:
+                    LOGD("HEX: count--[%d]", processor_apps[HEXAGON_TYPE]);
+                    break;
+                case TPU_TYPE:
+                    LOGD("TPU: count--[%d]", processor_apps[TPU_TYPE]);
+                    break;
+            }
+#endif
+            break;
         }
 
-        return; // Inference finished
+        case INVOKE:
+        {
+            // XXX: PUSH MESSAGE HERE!!!
+            message_queue.push( { clfd, pkt.model_idx } );
+
+
+            if (check_client[clfd] == 0) {
+                check_client[clfd] = 1;
+                num_client++;
+                LOGD("# of client++: %d", (int) std::move(num_client));
+            }
+
+            if (num_client >= HOW_MANY_TO_START_AT_ONCE) {
+                notify_flag = true;
+            }
+
+            if (notify_flag) {
+                cv.notify_one();
+            }
+
+            break;
+        }
+
+        default:
+            LOGW("something wrong with packet");
     }
-
-    LOGD("(JBD) %s:%d, push message!!", __func__, __LINE__);
-    message_queue.push(clfd);
-
-
-    if (check_client[clfd] == 0) {
-        check_client[clfd] = 1;
-        num_client++;
-        LOGD("(JBD) #of client: %d", (int) std::move(num_client));
-    }
-
-    if (num_client >= HOW_MANY_TO_START_AT_ONCE) {
-        notify_flag = true;
-    }
-
-    if (notify_flag) {
-        cv.notify_one();
-    }
-
-    LOGD("(JBD) %s:%d, leave >>>>>> push_message", __func__, __LINE__);
-
     return;
 }
 
-int pop_message() {
-    LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, entered pop_message", __func__, __LINE__);
+int pop_message(MESSAGE &msg) {
     std::lock_guard<std::mutex> guard(g_m_message);
 
     if (!message_queue.empty()) {
-        int msg = message_queue.front();
-        LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, pop message!!", __func__, __LINE__);
+        msg = message_queue.front(); // is this copy possible?
         message_queue.pop();
-        return msg;
+        return 0;
     } else {
-        LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, queue is empty", __func__, __LINE__);
         return -1;
     }
 }
 
-int findBestProcessor() {
+int findBestProcessor(int model_idx) {
 
     int candidate[4];
 
     std::lock_guard<std::mutex> guard(g_m_message);
 
-    candidate[0] = profiles[CPU_TYPE]       [ processor_apps[CPU_TYPE] ];
-    candidate[1] = profiles[GPU_TYPE]       [ processor_apps[GPU_TYPE] ];
-    candidate[2] = profiles[HEXAGON_TYPE]   [ processor_apps[HEXAGON_TYPE] ];
-    candidate[3] = profiles[TPU_TYPE]       [ processor_apps[TPU_TYPE]  ];
+    candidate[0] = profiles[model_idx][CPU_TYPE]    [ processor_apps[CPU_TYPE] ];
+    candidate[1] = profiles[model_idx][GPU_TYPE]    [ processor_apps[GPU_TYPE] ];
+    candidate[2] = profiles[model_idx][HEXAGON_TYPE][ processor_apps[HEXAGON_TYPE] ];
+    candidate[3] = profiles[model_idx][TPU_TYPE]    [ processor_apps[TPU_TYPE]  ];
 
     int min_value = candidate[0];
     int min_index = 0;
 
+#if 0 // DEBUG
     LOGD("[%d] vs [%d] vs [%d] vs [%d]",
             candidate[0],
             candidate[1],
             candidate[2],
             candidate[3]);
+#endif
 
     for (int index = 0; index < 4; index++) {
         if (min_value > candidate[index]) {
@@ -212,6 +236,7 @@ int findBestProcessor() {
 
     processor_apps[min_index]++;
 
+#if 0 // DEBUG
     switch(min_index)
     {
         case CPU_TYPE:
@@ -227,31 +252,22 @@ int findBestProcessor() {
             LOGD("TPU: count++[%d]", processor_apps[TPU_TYPE]);
             break;
     }
+#endif
     return min_index;
 }
 
 void handleMessage() {
 
     std::unique_lock lk(g_m_loop); // this lock is for conditional variable signal wait
-    // pop message
+    // forever loop
     while(true) {
-        int clfd = pop_message();
+        MESSAGE msg;
 
-        if (clfd < 0) {
-            LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, message NOT popped fd", __func__, __LINE__, clfd);
-            LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, wait for push notification", __func__, __LINE__);
-
+        int err = pop_message(msg);
+        if (err) { // message queue is empty
             cv.wait(lk); // wait until new message arrive
-
-            continue;
-        } else {
-            LOGD("\t\t\t\t\t\t\t(JBD) %s:%d, message poped", __func__, __LINE__);
+            continue; // woke up, continue and try message pop again
         }
-
-        LOGD("\t\t\t\t\t\t\t(JBD) client[%3d]: delegate[%2d]", clfd, (int) std::move(type));
-
-
-    // int state = read(clfd, &pid, sizeof(int));
 
 #ifdef STATIC_PROCESSOR
         type = STATIC_PROCESSOR;
@@ -263,15 +279,13 @@ void handleMessage() {
             type = 1;
 #else
 #ifdef GREEDY
-        type = findBestProcessor();
+        type = findBestProcessor(msg.model_idx);
 #endif // GREEDY
 #endif // ROUNDROBIN
 #endif // STATIC_PROCESSPR
+        processorPerClients[msg.clfd] = type;
 
-        processorPerClients[clfd] = type;
-
-        write(clfd, &type, sizeof(int));
-
+        write(msg.clfd, &type, sizeof(int));
     }
     return;
 }
@@ -312,7 +326,7 @@ void processSchedConnection(const epoll_event *event) {
         return;
     }
 
-    LOGD("(JBD) client[%3d]: delegate[%2d]", clfd, type);
+    LOGD("client[%3d]: delegate[%2d]", clfd, type);
     write(clfd, &type, sizeof(int));
     type++;
 
@@ -376,6 +390,9 @@ int Main(int argc, char** argv) {
     LOGD("Polling...(Ctrl+C to exit)\n");
 
     std::thread t1(handleMessage);
+    std::thread t2(handleMessage);
+    std::thread t3(handleMessage);
+    std::thread t4(handleMessage);
 
     while(1) {
         int epn = epoll_wait(epfd, events, MAX_EVENTS, -1);
@@ -395,6 +412,9 @@ int Main(int argc, char** argv) {
 
     terminate();
     t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
     return EXIT_SUCCESS;
 }
 }  // namespace benchmark
