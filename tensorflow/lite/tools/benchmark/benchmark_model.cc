@@ -82,11 +82,12 @@ void BenchmarkLoggingListener::OnBenchmarkEnd(const BenchmarkResults& results) {
   auto warmup_us = results.warmup_time_us();
   auto init_mem_usage = results.init_mem_usage();
   auto overall_mem_usage = results.overall_mem_usage();
-  TFLITE_LOG(INFO) << "Inference timings in us: "
-                   << "Init: " << init_us << ", "
-                   << "First inference: " << inference_us.first() << ", "
-                   << "Warmup (avg): " << warmup_us.avg() << ", "
-                   << "Inference (avg): " << inference_us.avg();
+  TFLITE_LOG(INFO) << "\t\t-->: "
+                   << "max: "               << inference_us.max() << ", "
+                   << "min: "               << inference_us.min() << ", "
+                   << "sum: "               << inference_us.sum() << ", "
+                   << "count: "             << inference_us.count() << ", "
+                   << "Inference (avg): "   << inference_us.avg();
 
   if (!init_mem_usage.IsSupported()) return;
   TFLITE_LOG(INFO)
@@ -337,6 +338,7 @@ TfLiteStatus BenchmarkModel::Run() {
     peak_mem_mb = peak_memory_reporter->GetPeakMemUsageInMB();
   }
 
+  TFLITE_LOG(INFO) << "Inference model name: " << params_.Get<std::string>("graph");
   listeners_.OnBenchmarkEnd({model_size_mb, startup_latency_us, input_bytes,
                              warmup_time_us, inference_time_us, init_mem_usage,
                              overall_mem_usage, peak_mem_mb});

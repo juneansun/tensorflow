@@ -82,8 +82,8 @@ static int profiles[2][4][10] = {
 
 static int processor_apps[4] = { 0, };
 
-// XXX: code flag for experiment
-#define HOW_MANY_TO_START_AT_ONCE 4
+// XXX: code flag for experiment, max on pixel4 is 7
+#define HOW_MANY_TO_START_AT_ONCE 1
 
 #define CPU_TYPE        0
 #define GPU_TYPE        1
@@ -95,7 +95,7 @@ static int processor_apps[4] = { 0, };
 // 1: GPU
 // 2: Hexagon
 // 3: TPU
-// #define STATIC_PROCESSOR 1
+// #define STATIC_PROCESSOR 3
 // #define ROUNDROBIN
 #define GREEDY
 
@@ -143,6 +143,7 @@ void push_message(const epoll_event* event) {
     {
         case FINISH:// client send -1 after inference finished
         {
+#ifdef GREEDY
             processor_apps[processorPerClients[clfd]]--;
 #if 0 // DEBUG
             switch(type)
@@ -160,6 +161,7 @@ void push_message(const epoll_event* event) {
                     LOGD("TPU: count--[%d]", processor_apps[TPU_TYPE]);
                     break;
             }
+#endif
 #endif
             break;
         }
@@ -205,7 +207,7 @@ int pop_message(MESSAGE &msg) {
     }
 }
 
-int findBestProcessor(int model_idx) {
+int greedySchedule(int model_idx) {
 
     int candidate[4];
 
@@ -219,13 +221,6 @@ int findBestProcessor(int model_idx) {
     int min_value = candidate[0];
     int min_index = 0;
 
-#if 0 // DEBUG
-    LOGD("[%d] vs [%d] vs [%d] vs [%d]",
-            candidate[0],
-            candidate[1],
-            candidate[2],
-            candidate[3]);
-#endif
 
     for (int index = 0; index < 4; index++) {
         if (min_value > candidate[index]) {
@@ -237,6 +232,11 @@ int findBestProcessor(int model_idx) {
     processor_apps[min_index]++;
 
 #if 0 // DEBUG
+    LOGD("[%d] vs [%d] vs [%d] vs [%d]",
+            candidate[0],
+            candidate[1],
+            candidate[2],
+            candidate[3]);
     switch(min_index)
     {
         case CPU_TYPE:
@@ -279,7 +279,7 @@ void handleMessage() {
             type = 1;
 #else
 #ifdef GREEDY
-        type = findBestProcessor(msg.model_idx);
+        type = greedySchedule(msg.model_idx);
 #endif // GREEDY
 #endif // ROUNDROBIN
 #endif // STATIC_PROCESSPR
@@ -338,7 +338,7 @@ void processSchedConnection(const epoll_event *event) {
 #endif
 
 void initializeSocket(const char *name) {
-    DEBUGGING;
+    D_FUNC;
     udsfd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (udsfd < 0) handleError("socket");
 

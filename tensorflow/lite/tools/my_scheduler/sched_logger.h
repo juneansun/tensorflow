@@ -7,6 +7,6 @@
 #define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
-#define DEBUGGING LOGD("%s:%d", __FILE__, __LINE__);
+#define D_FUNC LOGD("%s:%d", __FILE__, __LINE__);
 
 #define DEFAULT_SOCKET_NAME "/data/local/tmp/sched.sock"
