@@ -92,30 +92,12 @@ TfLiteQuantization GetQuantizationFromLegacy(
 
 }  // namespace
 
-void sched_client() {
-    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client thread");
-
-    initializeSocket(DEFAULT_SOCKET_NAME);
-    // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
-    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client connection established. (type \"\\q\" to exit)\n");
-
-    terminate();
-    return;
-}
-
 void initSchedClient() {
-    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client");
-
     initializeSocket(DEFAULT_SOCKET_NAME);
-    // if (signal(SIGINT, signalHandler) == SIG_ERR) handleError("signal");
-    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client connection established. (type \"\\q\" to exit)\n");
-
     return;
 }
 
 void terminateSchedClient() {
-    TFLITE_LOG_PROD_ONCE(TFLITE_LOG_INFO, "(JBD) \t\t\tsched_client terminate");
-
     terminate();
     return;
 }
@@ -298,44 +280,42 @@ TfLiteStatus Interpreter::ResizeInputTensorStrict(
 int cnt = 0;
 
 typedef struct Packet_ {
-    int pid;
-    int model;
+    int request;
+    int model_idx;
 } PACKET;
 
-#define LOG_TAG "tflite"
+#define INVOKE 0
+#define FINISH 1
 TfLiteStatus Interpreter::Dynamic_Invoke(int model_idx) {
     TfLiteStatus status;
 
     {   // invoke inference
-        int pid = getpid();
-        // PACKET pkt = { pid, model_idx } ;
-        write_data(sizeof(int), pid);
+        PACKET pkt = { INVOKE, model_idx } ;
+        write_data(sizeof(PACKET), &pkt);
 
-        int type;
-        type = read_data();
-
-        switch(type) {
+        switch(read_data()) {
             case NORMAL_TYPE:
-                LOGI("(JBD) normal invoke");
+                // LOGV("(JBD) normal invoke");
                 status = Normal_Invoke();
                 break;
             case GPU_TYPE:
-                LOGI("(JBD) GPU invoke");
+                // LOGV("(JBD) GPU invoke");
                 status = GPU_Invoke();
                 break;
             case HEXAGON_TYPE:
-                LOGI("(JBD) HEXAGON invoke");
+                // LOGV("(JBD) HEXAGON invoke");
                 status = Hexagon_Invoke();
                 break;
             case TPU_TYPE:
-                LOGI("(JBD) TPU invoke");
+                // LOGV("(JBD) TPU invoke");
                 status = TPU_Invoke();
                 break;
         }
     }
 
     {   // this will notify server to decrease client count
-        write_data(sizeof(int), -1);
+        PACKET pkt = { FINISH, } ;
+        write_data(sizeof(PACKET), &pkt);
     }
 
     return status;
@@ -667,7 +647,6 @@ TfLiteStatus Interpreter::ModifyGraphWithDelegateImpl(
 
 TfLiteStatus Interpreter::ModifyGraphWithGPUDelegateImpl(
         TfLiteDelegate* delegate) {
-    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) %s:%s", __FILE__, __func__);
     TfLiteStatus status = kTfLiteOk;
     for (auto& subgraph : gpu_subgraphs_) {
         if (IsValidationSubgraph(subgraph->GetName().c_str())) {
@@ -688,7 +667,6 @@ TfLiteStatus Interpreter::ModifyGraphWithGPUDelegateImpl(
 
 TfLiteStatus Interpreter::ModifyGraphWithHexagonDelegateImpl(
         TfLiteDelegate* delegate) {
-    TFLITE_LOG(TFLITE_LOG_INFO, "(JBD) %s:%s", __FILE__, __func__);
     TfLiteStatus status = kTfLiteOk;
     for (auto& subgraph : hexagon_subgraphs_) {
         if (IsValidationSubgraph(subgraph->GetName().c_str())) {
