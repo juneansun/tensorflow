@@ -23,6 +23,7 @@ limitations under the License.
 #include <memory>
 #include <sstream>
 #include <string>
+#include <list>
 
 #include "tensorflow/lite/profiling/memory_info.h"
 #include "tensorflow/lite/profiling/time.h"
@@ -216,6 +217,8 @@ Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
   // (JBD) send first count for correct calculation
   TfLiteStatus status = RunImpl();
 
+  std::list<int64_t> runtime;
+
   int64_t now_us = profiling::time::NowMicros();
   int64_t min_finish_us = now_us + static_cast<int64_t>(min_secs * 1.e6f);
   int64_t max_finish_us = now_us + static_cast<int64_t>(max_secs * 1.e6f);
@@ -236,7 +239,10 @@ Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
     int64_t end_us = profiling::time::NowMicros(); // (JBD) end time of inference??
     listeners_.OnSingleRunEnd();
 
-    run_stats.UpdateStat(end_us - start_us);
+    int64_t t = end_us - start_us;
+    run_stats.UpdateStat(t);
+
+    runtime.push_back(t);
 
     if (run_frequency > 0) {
       inter_run_sleep_time =
@@ -252,6 +258,23 @@ Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
       *invoke_status = status;
     }
   }
+
+  std::string s_pid = std::to_string(getpid());
+  std::string s_path = "/data/local/tmp/log/pid-" + s_pid;
+
+  char c_path[s_path.length() + 1];
+  strcpy(c_path, s_path.c_str());
+
+  FILE *f = fopen(c_path, "a+");
+  //TFLITE_LOG(INFO) << "---- START ----";
+  for (auto rt : runtime) {
+      fprintf(f, std::to_string(rt).c_str());
+      fprintf(f ," ");
+      fflush(f);
+      //TFLITE_LOG(INFO) << "runtime: " << rt;
+  }
+  fclose(f);
+  //TFLITE_LOG(INFO) << "----- END -----";
 
   std::stringstream stream;
   run_stats.OutputToStream(&stream);
