@@ -269,7 +269,7 @@ Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
   //TFLITE_LOG(INFO) << "---- START ----";
   for (auto rt : runtime) {
       fprintf(f, std::to_string(rt).c_str());
-      fprintf(f ," ");
+      fprintf(f ,"\n");
       fflush(f);
       //TFLITE_LOG(INFO) << "runtime: " << rt;
   }
