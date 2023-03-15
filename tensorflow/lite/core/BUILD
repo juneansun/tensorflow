@@ -250,6 +250,7 @@ cc_library(
         "//tensorflow/lite/schema:conversion_metadata_fbs",
         "//tensorflow/lite/schema:schema_fbs",
         "//tensorflow/lite/schema:schema_utils",
+        "//tensorflow/lite/profiling:time",
         "@flatbuffers//:runtime_cc",
         "@ruy//ruy:denormal",
     ],

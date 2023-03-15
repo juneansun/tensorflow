@@ -39,6 +39,7 @@ limitations under the License.
 #include "tensorflow/lite/profiling/telemetry/telemetry.h"
 #include "tensorflow/lite/stderr_reporter.h"
 #include "tensorflow/lite/util.h"
+#include "tensorflow/lite/profiling/time.h"
 
 // TODO(b/139446230): Move to portable platform header.
 #if defined(__ANDROID__)
@@ -102,12 +103,15 @@ void terminateSchedClient() {
     return;
 }
 
+int pid = -1;
 Interpreter::Interpreter(ErrorReporter* error_reporter)
     : error_reporter_(error_reporter ? error_reporter
                                      : DefaultErrorReporter()) {
 
   // sched_client_thr = std::make_unique<std::thread> (sched_client);
   initSchedClient();
+
+  pid = getpid();
 
   // Prod logging is useful for mobile platforms where scraping console logs is
   // critical for debugging.
@@ -282,6 +286,8 @@ int cnt = 0;
 typedef struct Packet_ {
     int request;
     int model_idx;
+    uint64_t release_time;
+    int pid;
 } PACKET;
 
 #define INVOKE 0
@@ -290,31 +296,31 @@ TfLiteStatus Interpreter::Dynamic_Invoke(int model_idx) {
     TfLiteStatus status;
 
     {   // invoke inference
-        PACKET pkt = { INVOKE, model_idx } ;
+        PACKET pkt = { INVOKE, model_idx, 0, pid } ;
         write_data(sizeof(PACKET), &pkt);
 
         switch(read_data()) {
             case NORMAL_TYPE:
-                // LOGV("(JBD) normal invoke");
+                // LOGI("(JBD) normal invoke");
                 status = Normal_Invoke();
                 break;
             case GPU_TYPE:
-                // LOGV("(JBD) GPU invoke");
+                // LOGI("(JBD) GPU invoke");
                 status = GPU_Invoke();
                 break;
             case HEXAGON_TYPE:
-                // LOGV("(JBD) HEXAGON invoke");
+                // LOGI("(JBD) HEXAGON invoke");
                 status = Hexagon_Invoke();
                 break;
             case TPU_TYPE:
-                // LOGV("(JBD) TPU invoke");
+                // LOGI("(JBD) TPU invoke");
                 status = TPU_Invoke();
                 break;
         }
     }
 
     {   // this will notify server to decrease client count
-        PACKET pkt = { FINISH, } ;
+        PACKET pkt = { FINISH, model_idx, /* release time, pid */ } ;
         write_data(sizeof(PACKET), &pkt);
     }
 
