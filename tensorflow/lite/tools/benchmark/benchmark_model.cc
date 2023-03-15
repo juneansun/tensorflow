@@ -271,7 +271,7 @@ Stat<int64_t> BenchmarkModel::Run(int min_num_times, float min_secs,
       fprintf(f, std::to_string(rt).c_str());
       fprintf(f ,"\n");
       fflush(f);
-      //TFLITE_LOG(INFO) << "runtime: " << rt;
+      // TFLITE_LOG(INFO) << "runtime: " << rt;
   }
   fclose(f);
   //TFLITE_LOG(INFO) << "----- END -----";
