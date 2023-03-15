@@ -54,8 +54,15 @@ limitations under the License.
 #include "tensorflow/lite/tools/utils.h"
 
 #define SKKU
-#define MOBILENET       0
-#define INCEPTIONNET    1
+enum MODEL {
+    TFLITE_MOBILE,
+    TFLITE_INCEPTION,
+    TFLITE_BERT,
+    TFLITE_EFFICIENT,
+    TFLITE_RESIDUAL,
+    TFLITE_YAM,
+    MAX_NUM_MODEL,
+};
 
 static int model_idx = -1;
 
@@ -900,10 +907,22 @@ TfLiteStatus BenchmarkTfLiteModel::LoadModel() {
 
     if (params_.Get<std::string>("graph").find("inception") != std::string::npos) {
         TFLITE_LOG(WARN) << "(JBD) inceptionNet";
-        model_idx = INCEPTIONNET;
+        model_idx = TFLITE_INCEPTION;
     } else if (params_.Get<std::string>("graph").find("mobile") != std::string::npos) {
         TFLITE_LOG(WARN) << "(JBD) mobileNet";
-        model_idx = MOBILENET;
+        model_idx = TFLITE_MOBILE;
+    } else if (params_.Get<std::string>("graph").find("bert") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) bert";
+        model_idx = TFLITE_BERT;
+    } else if (params_.Get<std::string>("graph").find("efficient") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) efficient";
+        model_idx = TFLITE_EFFICIENT;
+    } else if (params_.Get<std::string>("graph").find("res") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) efficient";
+        model_idx = TFLITE_RESIDUAL;
+    } else if (params_.Get<std::string>("graph").find("yam") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) efficient";
+        model_idx = TFLITE_YAM;
     }
   return kTfLiteOk;
 }

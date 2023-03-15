@@ -12,6 +12,14 @@
 
 #define LOG_TAG "\t\t\tsched_client"
 
+typedef struct RequestMsg {
+    int pid;
+    int cpu_inf_time;
+    int gpu_inf_time;
+    int hexagon_inf_time;
+    int pu_inf_time;
+    int other_inf_time;
+};
 
 volatile sig_atomic_t canLoop = 1;
 
