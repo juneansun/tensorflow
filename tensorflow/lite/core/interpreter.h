@@ -860,6 +860,7 @@ class Interpreter {
   // interpreter.cc rather than in interpreter_experimental.cc, so it can be
   // used to implement other non-experimental methods.
   TfLiteStatus ModifyGraphWithDelegateImpl(TfLiteDelegate* delegate);
+  TfLiteStatus ModifyGraphWithNormalDelegateImpl(TfLiteDelegate* delegate);
   TfLiteStatus ModifyGraphWithGPUDelegateImpl(TfLiteDelegate* delegate);
   TfLiteStatus ModifyGraphWithHexagonDelegateImpl(TfLiteDelegate* delegate);
   TfLiteStatus ModifyGraphWithTPUDelegateImpl(TfLiteDelegate* delegate);
@@ -881,6 +882,86 @@ class Interpreter {
                   delegate_to_delete));
         });
     return ModifyGraphWithDelegateImpl(owned_delegates_.back().get());
+  }
+
+  template <typename Delegate, typename Deleter>
+  inline TfLiteStatus ModifyGraphWithNormalDelegateImpl(
+      std::unique_ptr<Delegate, Deleter>&& delegate) {
+    Deleter deleter = std::move(delegate.get_deleter());
+
+    // Note that we retain ownership of the delegate even if graph modification
+    // fails, as delegate use will be in an indeterminate state at that point.
+    owned_delegates_.emplace_back(
+        delegate.release(), [deleter](TfLiteDelegate* delegate_to_delete) {
+          deleter(
+              static_cast<typename std::unique_ptr<Delegate, Deleter>::pointer>(
+                  delegate_to_delete));
+        });
+    return ModifyGraphWithNormalDelegateImpl(owned_delegates_.back().get());
+  }
+
+  template <typename Delegate, typename Deleter>
+  inline TfLiteStatus ModifyGraphWithGPUDelegateImpl(
+      std::unique_ptr<Delegate, Deleter>&& delegate) {
+    Deleter deleter = std::move(delegate.get_deleter());
+
+    // Note that we retain ownership of the delegate even if graph modification
+    // fails, as delegate use will be in an indeterminate state at that point.
+    owned_delegates_.emplace_back(
+        delegate.release(), [deleter](TfLiteDelegate* delegate_to_delete) {
+          deleter(
+              static_cast<typename std::unique_ptr<Delegate, Deleter>::pointer>(
+                  delegate_to_delete));
+        });
+    return ModifyGraphWithGPUDelegateImpl(owned_delegates_.back().get());
+  }
+
+  template <typename Delegate, typename Deleter>
+  inline TfLiteStatus ModifyGraphWithHexagonDelegateImpl(
+      std::unique_ptr<Delegate, Deleter>&& delegate) {
+    Deleter deleter = std::move(delegate.get_deleter());
+
+    // Note that we retain ownership of the delegate even if graph modification
+    // fails, as delegate use will be in an indeterminate state at that point.
+    owned_delegates_.emplace_back(
+        delegate.release(), [deleter](TfLiteDelegate* delegate_to_delete) {
+          deleter(
+              static_cast<typename std::unique_ptr<Delegate, Deleter>::pointer>(
+                  delegate_to_delete));
+        });
+    return ModifyGraphWithHexagonDelegateImpl(owned_delegates_.back().get());
+  }
+
+  template <typename Delegate, typename Deleter>
+  inline TfLiteStatus ModifyGraphWithTPUDelegateImpl(
+      std::unique_ptr<Delegate, Deleter>&& delegate) {
+    Deleter deleter = std::move(delegate.get_deleter());
+
+    // Note that we retain ownership of the delegate even if graph modification
+    // fails, as delegate use will be in an indeterminate state at that point.
+    owned_delegates_.emplace_back(
+        delegate.release(), [deleter](TfLiteDelegate* delegate_to_delete) {
+          deleter(
+              static_cast<typename std::unique_ptr<Delegate, Deleter>::pointer>(
+                  delegate_to_delete));
+        });
+    return ModifyGraphWithTPUDelegateImpl(owned_delegates_.back().get());
+  }
+
+  template <typename Delegate, typename Deleter>
+  inline TfLiteStatus ModifyGraphWithOtherDelegateImpl(
+      std::unique_ptr<Delegate, Deleter>&& delegate) {
+    Deleter deleter = std::move(delegate.get_deleter());
+
+    // Note that we retain ownership of the delegate even if graph modification
+    // fails, as delegate use will be in an indeterminate state at that point.
+    owned_delegates_.emplace_back(
+        delegate.release(), [deleter](TfLiteDelegate* delegate_to_delete) {
+          deleter(
+              static_cast<typename std::unique_ptr<Delegate, Deleter>::pointer>(
+                  delegate_to_delete));
+        });
+    return ModifyGraphWithOtherDelegateImpl(owned_delegates_.back().get());
   }
 
   // Overrides execution plan. ImplThis bounds checks indices sent in.
