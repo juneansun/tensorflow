@@ -365,6 +365,9 @@ TfLiteStatus BenchmarkModel::Run() {
   listeners_.OnBenchmarkEnd({model_size_mb, startup_latency_us, input_bytes,
                              warmup_time_us, inference_time_us, init_mem_usage,
                              overall_mem_usage, peak_mem_mb});
+
+  TFLITE_LOG(INFO) << "(JBD) Model: " << params_.Get<std::string>("graph") << " time: " << inference_time_us.avg();
+
   return status;
 }
 
