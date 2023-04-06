@@ -578,7 +578,20 @@ TfLiteStatus Interpreter::ApplyLazyDelegateProviders() {
     // tflite::MaybeCreateXNNPACKDelegate(...)) will return a nullptr.
     // Therefore, we simply continue with the next one.
     if (delegate_ptr == nullptr) continue;
-    auto status = ModifyGraphWithDelegateImpl(std::move(delegate_ptr));
+    // JBD: original code
+    // auto status = ModifyGraphWithNormalDelegateImpl(std::move(delegate_ptr));
+
+    // JBD: modified code
+    // Originally, ModifyGraphWithXXXDelegate should get unique_ptr as paramter, but
+    // it keeps ownership of pointer which isn't possible with my solution,
+    // fortunately, ModifyGraphWithXXXDelegates supports function overloading,
+    // so instead of sending unique_ptr, use get() function to get raw pointer and
+    // set it to function parameter
+    auto status = ModifyGraphWithNormalDelegateImpl(std::move(delegate_ptr.get()));
+    status = ModifyGraphWithGPUDelegateImpl(std::move(delegate_ptr.get()));
+    status = ModifyGraphWithHexagonDelegateImpl(std::move(delegate_ptr.get()));
+    status = ModifyGraphWithTPUDelegateImpl(std::move(delegate_ptr.get()));
+
     switch (status) {
       case kTfLiteOk:
         TFLITE_LOG(
@@ -632,6 +645,26 @@ TfLiteStatus Interpreter::ApplyLazyDelegateProviders() {
 }
 
 TfLiteStatus Interpreter::ModifyGraphWithDelegateImpl(
+    TfLiteDelegate* delegate) {
+  TfLiteStatus status = kTfLiteOk;
+  for (auto& subgraph : subgraphs_) {
+    if (IsValidationSubgraph(subgraph->GetName().c_str())) {
+      continue;
+    }
+    status = subgraph->ModifyGraphWithDelegate(delegate);
+    if (status != kTfLiteOk) {
+      break;
+    }
+  }
+  // Delegate-specific errors can be recovered from by restoring Interpreter to
+  // its original state.
+  if (status == kTfLiteDelegateError) {
+    TF_LITE_ENSURE_STATUS(RemoveAllDelegates());
+  }
+  return status;
+}
+
+TfLiteStatus Interpreter::ModifyGraphWithNormalDelegateImpl(
     TfLiteDelegate* delegate) {
   TfLiteStatus status = kTfLiteOk;
   for (auto& subgraph : subgraphs_) {

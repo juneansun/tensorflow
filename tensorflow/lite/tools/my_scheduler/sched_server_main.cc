@@ -183,7 +183,7 @@ static Processor *p[4];
 // 1: GPU
 // 2: Hexagon
 // 3: TPU
-// #define STATIC_PROCESSOR XXX
+// #define STATIC_PROCESSOR HEXAGON_TYPE
 //
 // #define ROUNDROBIN
 //
