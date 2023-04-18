@@ -1,4 +1,18 @@
-reset ; echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" ; bazel build -c dbg --config=android_arm64 tensorflow/lite/tools/my_scheduler:sched_server; adb push bazel-bin/tensorflow/lite/tools/my_scheduler/sched_server /data/local/tmp ; bazel build -c dbg --config=android_arm64 tensorflow/lite/tools/benchmark:benchmark_model ; adb push bazel-bin/tensorflow/lite/tools/benchmark/benchmark_model /data/local/tmp/ ; adb shell "pkill -9 benchmark_model ; pkill -9 sched_server ; /data/local/tmp/sched_server" ; adb shell "pkill -9 benchmark_model ; pkill -9 sched_server ; /data/local/tmp/sched_server" ; echo "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+reset ; 
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" ; 
+
+bazel build -c dbg --config=android_arm64 tensorflow/lite/tools/my_scheduler:sched_server;
+
+adb push bazel-bin/tensorflow/lite/tools/my_scheduler/sched_server /data/local/tmp ; 
+
+bazel build -c dbg --config=android_arm64 tensorflow/lite/tools/benchmark:benchmark_model ;
+
+adb push bazel-bin/tensorflow/lite/tools/benchmark/benchmark_model /data/local/tmp/ ; 
+ 
+adb shell "pkill -9 benchmark_model ; pkill -9 sched_server ; /data/local/tmp/sched_server" ;
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
 
 <div align="center">
