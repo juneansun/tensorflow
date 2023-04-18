@@ -14,6 +14,11 @@ adb shell "pkill -9 benchmark_model ; pkill -9 sched_server ; /data/local/tmp/sc
 
 echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
+adb shell "taskset f0 /data/local/tmp/benchmark_model --graph=/data/local/tmp/tflite_models/mobilenet_v2_1.0_224_quant.tflite --use_gpu=true --use_hexagon=true --use_nnapi=true --nnapi_accelerator_name=google-edgetpu --min_secs=10 --num_runs=1"
+
+echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+
+
 
 <div align="center">
   <img src="https://www.tensorflow.org/images/tf_logo_horizontal.png">
