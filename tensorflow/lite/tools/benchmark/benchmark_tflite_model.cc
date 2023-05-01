@@ -57,10 +57,11 @@ limitations under the License.
 enum MODEL {
     TFLITE_MOBILE,
     TFLITE_INCEPTION,
-    TFLITE_BERT,
-    TFLITE_EFFICIENT,
-    TFLITE_RESIDUAL,
     TFLITE_YAM,
+    TFLITE_MOVE,
+    TFLITE_BERT,
+//    TFLITE_EFFICIENT,
+//    TFLITE_RESIDUAL,
     MAX_NUM_MODEL,
 };
 
@@ -911,19 +912,25 @@ TfLiteStatus BenchmarkTfLiteModel::LoadModel() {
     } else if (params_.Get<std::string>("graph").find("mobile") != std::string::npos) {
         TFLITE_LOG(WARN) << "(JBD) mobileNet";
         model_idx = TFLITE_MOBILE;
+    } else if (params_.Get<std::string>("graph").find("move") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) move";
+        model_idx = TFLITE_MOVE;
     } else if (params_.Get<std::string>("graph").find("bert") != std::string::npos) {
         TFLITE_LOG(WARN) << "(JBD) bert";
         model_idx = TFLITE_BERT;
+    } else if (params_.Get<std::string>("graph").find("yam") != std::string::npos) {
+        TFLITE_LOG(WARN) << "(JBD) yam";
+        model_idx = TFLITE_YAM;
+    }
+/*
     } else if (params_.Get<std::string>("graph").find("efficient") != std::string::npos) {
         TFLITE_LOG(WARN) << "(JBD) efficient";
         model_idx = TFLITE_EFFICIENT;
     } else if (params_.Get<std::string>("graph").find("res") != std::string::npos) {
-        TFLITE_LOG(WARN) << "(JBD) efficient";
+        TFLITE_LOG(WARN) << "(JBD) resnet";
         model_idx = TFLITE_RESIDUAL;
-    } else if (params_.Get<std::string>("graph").find("yam") != std::string::npos) {
-        TFLITE_LOG(WARN) << "(JBD) efficient";
-        model_idx = TFLITE_YAM;
-    }
+        }
+*/
   return kTfLiteOk;
 }
 
