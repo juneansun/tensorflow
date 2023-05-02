@@ -79,34 +79,34 @@ static int processorPerClients[1024];
 
 static int profiles[NUM_TFLITE_MODEL][NUM_PROCESSOR_TYPE][10] = {
     {   // MoblieNet
-        { 85168,    99999,    99999,    99999, 99999, 99999, 99999 }, // CPU
-        { 11189,    12199,    14996,    20679, 25195, 30084, 39789 }, // GPU
-        { 3510,     5657,     8430,     11281, 16960, 19773 }, // Hexagon
-        { 2872,     6529,     9793,     13072, 16349, 19631, 22874, 26166 } // TPU
+        { 85168,    86290,    99093,    0xffffff,   0xffffff,   99999,  99999 }, // CPU
+        { 11189,    12199,    14996,    20679,      25195,      30084,  39789 }, // GPU
+        { 3510,     5657,     8430,     11281,      16960,      19773 }, // Hexagon
+        { 2872,     6529,     9793,     13072,      16349,      19631,  22874,  26166 } // TPU
     },
     {   // InceptionNet
-        { 564661,   616192,   641378,   680000,   720000,  760000 }, // CPU
+        { 564661,   587842,   661378,   680000,   720000,  760000 }, // CPU
         { 134514,   260589,   384482,   518373,   655177,  782517,  910000,  1040000 }, // GPU
         { 18006,    31939,    50308,    67031,    85702,   104356,  119000,  136000 }, // Hexagon
         { 24639,    42326,    60307,    80296,    100000,  120000,  140000,  160000 } // TPU
     },
-    {   // YamNet - Partitioned on every processor
-        { 17839,    0xffffff, 641378,   680000,  720000,  760000 }, // CPU
-        { 6145,     0xffffff, 384482,   518373,  655177,  782517,  910000,  1040000 }, // GPU
-        { 6678,     0xffffff, 50308,    67031,   85702,   104356,  119000,  136000 }, // Hexagon
-        { 11769,    0xffffff, 60307,    80296,   100000,  120000,  140000,  160000 } // TPU
+    {   // YamNet
+        { 17089,    17839,    18132,    18723,      19230,      20003,      0xffffff }, // CPU
+        { 6145,     6381,     6459,     0xffffff,   518373,     655177,     782517,  910000,  1040000 }, // GPU
+        { 6678,     7366,     7685,     7687,       0xffffff,   50308,      85702,   104356,  119000 }, // Hexagon
+        { 11769,    12515,    12784,    15221,      17431,      0xffffff,   140000,  160000 } // TPU
     },
     {   // MoveNET - DSP is totally unavailable
-        { 145170,   0xffffff, 641378,   680000,   720000,     760000,     0xffffff,   0xffffff }, // CPU
-        { 17303,    0xffffff, 0xffffff, 0xffffff, 0xffffff,   0xffffff,   0xffffff,   0xffffff }, // GPU
-        { 0xffffff, 0xffffff, 50308,    67031,    85702,      104356,     119000,     136000 }, // Hexagon
-        { 42836,    0xffffff, 60307,    80296,    100000,     120000,     140000,     160000 } // TPU
+        { 139362,   140168,   145170,   0xffffff,   720000,     760000,     0xffffff,   0xffffff }, // CPU
+        { 17303,    19534,    20009,    0xffffff,   0xffffff,   0xffffff,   0xffffff,   0xffffff }, // GPU
+        { 0xffffff, 0xffffff, 0xffffff, 0xffffff,   0xffffff,   0xffffff,   0xffffff,   0xffffff }, // Hexagon
+        { 42836,    44943,    48753,    48832,      49002,      52239,      0xffffff,   160000 } // TPU
     },
-    {   // BERT - Partitioned on every processor
-        { 2420000,  0xffffff, 641378,   680000,   720000,     760000,     0xffffff,   0xffffff }, // CPU
-        { 339236,   0xffffff, 0xffffff, 0xffffff, 0xffffff,   0xffffff,   0xffffff,   0xffffff }, // GPU
-        { 204426,   0xffffff, 50308,    67031,    85702,      104356,     119000,     136000 }, // Hexagon
-        { 2260000,  0xffffff, 60307,    80296,    100000,     120000,     140000,     160000 } // TPU
+    {   // BERT
+        { 2332900,  2361000,  2420000,  0xffffff,   720000,     760000,     0xffffff,   0xffffff }, // CPU
+        { 339236,   604783,   693384,   0xffffff,   0xffffff,   0xffffff,   0xffffff,   0xffffff }, // GPU
+        { 204426,   409766,   615739,   0xffffff,   85702,      104356,     119000,     136000 }, // Hexagon
+        { 2260000,  2312893,  2350291,  0xffffff,   100000,     120000,     140000,     160000 } // TPU
     },
 /*
     {   // EfficientNet
@@ -249,7 +249,9 @@ class ProcessorGPU : public IProcessor {
                 }
             }
 
+#if 0
             LOGD("(JBD) wcet[%d] x profile[%d]", wcet, profiles[model_idx][processorID][0]);
+#endif
 
             return (wcet / 10000) * profiles[model_idx][processorID][0];
         };
@@ -262,13 +264,13 @@ class ProcessorGPU : public IProcessor {
 static IProcessor *p[4];
 
 // XXX: code flag for experiment, max on pixel4 is 7
-#define HOW_MANY_TO_START_AT_ONCE 1
+#define HOW_MANY_TO_START_AT_ONCE 5
 
 // 0: CPU
 // 1: GPU
 // 2: Hexagon
 // 3: TPU
-// #define STATIC_PROCESSOR GPU_TYPE
+// #define STATIC_PROCESSOR TPU_TYPE
 //
 // #define ROUNDROBIN
 #define GREEDY
@@ -457,7 +459,7 @@ int greedySchedule(int model_idx) {
 
     p[min_index]->incClient(model_idx);
 
-#if 1 // DEBUG
+#if 0 // DEBUG
     LOGD("[%d] vs [%d] vs [%d] vs [%d]",
             candidate[0],
             candidate[1],
