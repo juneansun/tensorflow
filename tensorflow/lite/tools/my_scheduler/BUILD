@@ -22,14 +22,14 @@ cc_library(
     hdrs = ["sched_logger.h"],
     copts = common_copts,
     linkopts = select({
-            "//tensorflow:android" : ["-llog -static-libgcc -Wl,-static -lc"]
+            "//tensorflow:android" : ["-llog -landroid -pthread -ldl"]
     }),
 )
 
 cc_binary(
     name = "sched_server",
     copts = common_copts,
-    linkopts = tflite_linkopts() + select({
+    linkopts = select({
         "//tensorflow:android": [
             "-pie",  # Android 5.0 and later supports only PIE
             "-lm",  # some builtin ops, e.g., tanh, need -lm
