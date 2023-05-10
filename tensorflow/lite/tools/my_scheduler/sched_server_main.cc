@@ -147,7 +147,10 @@ class Processor : public IProcessor {
     public:
         Processor(int pID) {
             processorID = pID;
-            mNumClient[0] = mNumClient[1] = 0;
+
+            for (int i = 0; i < NUM_TFLITE_MODEL; i++) {
+                mNumClient[i] = 0;
+            }
 
 #if 0 // DEBUG
             LOGD("(JBD) processor: %d, mobile[%d], inception[%d]", processorID, mNumClient[0], mNumClient[1]);
