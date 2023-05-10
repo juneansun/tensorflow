@@ -147,7 +147,10 @@ class Processor : public IProcessor {
     public:
         Processor(int pID) {
             processorID = pID;
-            mNumClient[0] = mNumClient[1] = 0;
+
+            for (int i = 0; i < NUM_TFLITE_MODEL; i++) {
+                mNumClient[i] = 0;
+            }
 
 #if 0 // DEBUG
             LOGD("(JBD) processor: %d, mobile[%d], inception[%d]", processorID, mNumClient[0], mNumClient[1]);
@@ -264,13 +267,13 @@ class ProcessorGPU : public IProcessor {
 static IProcessor *p[4];
 
 // XXX: code flag for experiment, max on pixel4 is 7
-#define HOW_MANY_TO_START_AT_ONCE 5
+#define HOW_MANY_TO_START_AT_ONCE 1
 
 // 0: CPU
 // 1: GPU
 // 2: Hexagon
 // 3: TPU
-// #define STATIC_PROCESSOR TPU_TYPE
+// #define STATIC_PROCESSOR CPU_TYPE
 //
 // #define ROUNDROBIN
 #define GREEDY
@@ -444,13 +447,11 @@ int greedySchedule(int model_idx) {
 
     candidate[CPU_TYPE]     = p[CPU_TYPE]->getWCET(model_idx);
     candidate[GPU_TYPE]     = p[GPU_TYPE]->getWCET(model_idx);
-    candidate[HEXAGON_TYPE] = p[HEXAGON_TYPE]->getWCET(model_idx);
-    candidate[TPU_TYPE]     = p[TPU_TYPE]->getWCET(model_idx);
 
-    int min_value = candidate[0];
+    int min_value = candidate[CPU_TYPE];
     int min_index = 0;
 
-    for (int index = 0; index < 4; index++) {
+    for (int index = 0; index <= GPU_TYPE; index++) {
         if (min_value > candidate[index]) {
             min_value = candidate[index];
             min_index = index;
