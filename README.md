@@ -1,8 +1,10 @@
 # Parvati용 tensorflow lite 빌드 가이드
 
-Parvati tflite와 scheduling server를 빌드하는 가이드입니다.
+Parvati는 tflite 벤치마크 도구(benchmark tool)와 Scheduling Server를 기반으로 작동합니다
+본 가이드는 Parvati tflite와 scheduling server 빌드에 대한 가이드입니다.
+빌드 및 실행은 안드로이드 스마트폰을 타겟으로 합니다
 
-### Bazel 및 Android 필수 구성 요소 설치하기
+### 빌드환경 구성: Bazel 및 Android 필수 구성 요소 설치하기
 
 Bazel은 TensorFlow의 기본 빌드 시스템입니다. Bazel을 사용하여 빌드하려면 시스템에 Android NDK 및 SDK가 설치되어 있어야 합니다.
 
@@ -36,8 +38,49 @@ build --action_env ANDROID_SDK_API_LEVEL="33"
 build --action_env ANDROID_SDK_HOME="{Android SDK 경로}"
 ```
 
+### 벤치마크 도구 빌드 및 설치
 
-### 빌드 및 설치하기
+TensorFlow Lite 벤치마크 도구는 현재 다음과 같은 중요한 성능 지표에 대한 통계를 측정하고 계산합니다.
+
+- 초기화 시간
+- 워밍업 상태의 추론 시간
+- 정상 상태의 추론 시간
+- 초기화 시간 동안의 메모리 사용량
+- 전체 메모리 사용량
+
+벤치마크 도구는 Android 및 iOS용 벤치마크 앱과 기본 명령줄 바이너리로 사용할 수 있으며, 모두 동일한 핵심 성능 측정 로직을 공유합니다. 런타임 환경의 차이로 인해 사용 가능한 옵션 및 출력 형식이 약간 다릅니다.
+
+Parvati는 벤치마크 도구와 Scheduling Server가 같이 작동하므로 함께 빌드합니다
+
+```
+bazel build -c dbg --config=android_arm64 tensorflow/lite/tools/my_scheduler:sched_server
+bazel build -c dbg --config=android_arm64 tensorflow/lite/tools/benchmark:benchmark_model 
+```
+
+빌드완료 산출물은 adb 명령어를 이용해 스마트폰에 설치합니다
+```
+adb push bazel-bin/tensorflow/lite/tools/my_scheduler/sched_server /data/local/tmp 
+adb push bazel-bin/tensorflow/lite/tools/benchmark/benchmark_model /data/local/tmp/
+```
+
+### 실행
+
+먼저 Scheduling Server를 실행하고 벤치마크 도구를 실행합니다
+
+벤치마크 실행시 옵션은 다음 링크를 참고합니다 [Tflite 벤치마크 도구 안내](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools/benchmark#readme)
+
+Parvati는 CPU, GPU, DSP, NPU 를 선택적으로 사용 가능하므로 --use_gpu, --use_hexagon, --use_nnapi, --nnapi_accelerator_name=google-edgetpu 를 모두 넣어줍니다
+```
+adb shell "/data/local/tmp/sched_server" ;
+adb shell "taskset f0 /data/local/tmp/benchmark_model \
+  --graph=/data/local/tmp/tflite_models/mobilenet_v2_1.0_224_quant.tflite \
+  --use_gpu=true \
+  --use_hexagon=true \
+  --use_nnapi=true \
+  --nnapi_accelerator_name=google-edgetpu \
+  --min_secs=10 --num_runs=1"
+```
+
 
 
 <div align="center">
