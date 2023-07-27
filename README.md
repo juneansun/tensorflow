@@ -1,3 +1,44 @@
+# Parvati용 tensorflow lite 빌드 가이드
+
+Parvati tflite와 scheduling server를 빌드하는 가이드입니다.
+
+### Bazel 및 Android 필수 구성 요소 설치하기
+
+Bazel은 TensorFlow의 기본 빌드 시스템입니다. Bazel을 사용하여 빌드하려면 시스템에 Android NDK 및 SDK가 설치되어 있어야 합니다.
+
+1. 최신 버전의 [Bazel 빌드 시스템](https://bazel.build/versions/master/docs/install.html?hl=ko)을 설치합니다.
+2. 네이티브(C/C++) TensorFlow Lite 코드를 빌드하려면 Android NDK가 필요합니다. 현재 권장되는 버전은 19c이며 [여기](https://developer.android.com/ndk/downloads/older_releases.html?hl=ko#ndk-19c-downloads)에서 찾을 수 있습니다.
+3. Android SDK 및 빌드 도구는 [여기](https://developer.android.com/tools/revisions/build-tools.html?hl=ko)에서 얻거나, [Android Studio](https://developer.android.com/studio/index.html?hl=ko)의 일부로 얻을 수도 있습니다. TensorFlow Lite 빌드에 권장되는 버전은 Build tools API >= 23입니다.
+
+### WORKSPACE 및 .bazelrc 구성하기
+
+루트 TensorFlow 체크아웃 디렉토리에서 `./configure` 스크립트를 실행하고 스크립트가 Android 빌드용 `./WORKSPACE`를 대화식으로 구성할 것인지 물으면 "Yes"를 선택합니다. 스크립트는 다음 환경 변수를 사용하여 설정 구성을 시도합니다.
+
+- `ANDROID_SDK_HOME`
+- `ANDROID_SDK_API_LEVEL`
+- `ANDROID_NDK_HOME`
+- `ANDROID_NDK_API_LEVEL`
+
+Parvati 빌드가 가능한 확인된 설정은 아래와 같습니다
+NDK Version: 19.2.5345600
+NDK API Level: 19
+Tools Version: 33.0.0
+SDK API Level: 33
+
+이들 변수가 설정되지 않은 경우, 스크립트 프롬프트에서 대화식으로 제공해야 합니다. 성공적으로 구성되면 루트 폴더의 `.tf_configure.bazelrc` 파일에 다음과 같은 항목이 생깁니다.
+
+```
+build --action_env ANDROID_NDK_HOME="{Android SDK 경로}/ndk/19.2.5345600"
+build --action_env ANDROID_NDK_API_LEVEL="19"
+build --action_env ANDROID_BUILD_TOOLS_VERSION="33.0.0"
+build --action_env ANDROID_SDK_API_LEVEL="33"
+build --action_env ANDROID_SDK_HOME="{Android SDK 경로}"
+```
+
+
+### 빌드 및 설치하기
+
+
 <div align="center">
   <img src="https://www.tensorflow.org/images/tf_logo_horizontal.png">
 </div>
