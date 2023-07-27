@@ -20,10 +20,11 @@ Bazel은 TensorFlow의 기본 빌드 시스템입니다. Bazel을 사용하여 �
 - `ANDROID_NDK_API_LEVEL`
 
 Parvati 빌드가 가능한 확인된 설정은 아래와 같습니다
-NDK Version: 19.2.5345600
-NDK API Level: 19
-Tools Version: 33.0.0
-SDK API Level: 33
+
+* NDK Version: 19.2.5345600
+* NDK API Level: 19
+* Tools Version: 33.0.0
+* SDK API Level: 33
 
 이들 변수가 설정되지 않은 경우, 스크립트 프롬프트에서 대화식으로 제공해야 합니다. 성공적으로 구성되면 루트 폴더의 `.tf_configure.bazelrc` 파일에 다음과 같은 항목이 생깁니다.
 
